@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#140B33">
+<meta name="description" content="Олимпиада нәтижелері — Zerdeli Group">
+<title>Зерделі ұрпақ — нәтижелер</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700;900&display=swap&subset=cyrillic-ext">
+<link rel="preload" href="/api/tree" as="fetch" crossorigin="anonymous">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="bgfx" aria-hidden="true"></div>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="beam" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div id="announce" class="announce" hidden></div>
+
+<header class="top">
+  <a class="brand" href="/" aria-label="Zerdeli">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2l4.6 6.2 7.7-.9.9 7.7L39 20l-5.8 5 -.9 7.7-7.7-.9L20 38l-4.6-6.2-7.7.9-.9-7.7L1 20l5.8-5 .9-7.7 7.7.9z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 14h12l-12 12h12" fill="none" stroke="#B8F11A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Zerdeli</span>
+  </a>
+  <div class="lang" role="group" aria-label="Тіл / Язык">
+    <button type="button" data-lang="kk" aria-pressed="true">Қаз</button>
+    <button type="button" data-lang="ru" aria-pressed="false">Рус</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <svg class="crest" viewBox="0 0 240 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7645C1"/><stop offset="1" stop-color="#E9DDFF"/></linearGradient>
+        <radialGradient id="medal" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#3A2296"/><stop offset="1" stop-color="#140B33"/></radialGradient>
+        <g id="lf"><path d="M0 0c5-5.5 14-6 20 0-6 6-15 5.5-20 0z" fill="url(#leaf)"/></g>
+      </defs>
+      <g class="laurel l">
+        <path d="M111.9 135.4 L108.6 134.9 L105.4 134.1 L102.2 133.2 L99.0 132.1 L95.9 130.8 L92.9 129.3 L90.0 127.7 L87.2 125.9 L84.5 123.9 L81.9 121.8 L79.5 119.5 L77.2 117.1 L75.0 114.6 L73.0 111.9 L71.1 109.2 L69.4 106.3 L67.8 103.3 L66.5 100.3 L65.3 97.2 L64.2 94.0 L63.4 90.8 L62.8 87.5 L62.3 84.2 L62.1 80.8 L62.0 77.5 L62.1 74.2 L62.4 70.8 L63.0 67.5 L63.7 64.3 L64.5 61.0 L65.6 57.9 L66.9 54.8 L68.3 51.8 L69.9 48.8 L71.6 46.0 L73.6 43.3 L75.6 40.6 L77.9 38.1 L80.2 35.8 L82.7 33.6" fill="none" stroke="#9C7BE0" stroke-width="1.6" stroke-linecap="round"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-204.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-128.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-190.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-114.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-176.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-100.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-162.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-86.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-148.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-72.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-134.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-58.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-120.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-44.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-106.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-30.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-92.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-16.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(82.7 33.6) rotate(-40.0) scale(.7)"/>
+      </g>
+      <g class="laurel r" transform="translate(240 0) scale(-1 1)">
+        <path d="M111.9 135.4 L108.6 134.9 L105.4 134.1 L102.2 133.2 L99.0 132.1 L95.9 130.8 L92.9 129.3 L90.0 127.7 L87.2 125.9 L84.5 123.9 L81.9 121.8 L79.5 119.5 L77.2 117.1 L75.0 114.6 L73.0 111.9 L71.1 109.2 L69.4 106.3 L67.8 103.3 L66.5 100.3 L65.3 97.2 L64.2 94.0 L63.4 90.8 L62.8 87.5 L62.3 84.2 L62.1 80.8 L62.0 77.5 L62.1 74.2 L62.4 70.8 L63.0 67.5 L63.7 64.3 L64.5 61.0 L65.6 57.9 L66.9 54.8 L68.3 51.8 L69.9 48.8 L71.6 46.0 L73.6 43.3 L75.6 40.6 L77.9 38.1 L80.2 35.8 L82.7 33.6" fill="none" stroke="#9C7BE0" stroke-width="1.6" stroke-linecap="round"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-204.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-128.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-190.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-114.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-176.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-100.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-162.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-86.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-148.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-72.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-134.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-58.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-120.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-44.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-106.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-30.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-92.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-16.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(82.7 33.6) rotate(-40.0) scale(.7)"/>
+      </g>
+      <g class="star">
+        <circle cx="120" cy="78" r="38" fill="url(#medal)" stroke="#B8F11A" stroke-width="1.5"/>
+        <circle cx="120" cy="78" r="31" fill="none" stroke="#7645C1" stroke-width="1" stroke-dasharray="1.5 3.5"/>
+        <path d="M108 66h24l-24 24h24" fill="none" stroke="#B8F11A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M120 22l2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" fill="#B8F11A"/>
+      </g>
+    </svg>
+    <p class="subtitle" id="subtitle"></p>
+    <h1 class="title" id="title"></h1>
+    <p class="stage" id="stage"></p>
+  </section>
+
+  <section class="panel" id="panel" aria-live="polite">
+    <div class="panel-loading" id="loading"><span class="spinner" aria-hidden="true"></span><span data-t="loading"></span></div>
+
+    <div class="panel-error" id="error" hidden>
+      <p data-t="loadError"></p>
+      <button type="button" class="btn" id="retry" data-t="retry"></button>
+    </div>
+
+    <div class="closed" id="closed" hidden>
+      <p class="closed-text" id="closedText"></p>
+      <div class="countdown" id="countdown" hidden></div>
+    </div>
+
+    <form class="steps" id="steps" hidden onsubmit="return false">
+      <p class="intro" data-t="intro"></p>
+      <ol>
+        <li class="step" data-step="o">
+          <span class="num" aria-hidden="true">1</span>
+          <div class="step-body">
+            <span class="step-label" id="lbl-o" data-t="oblys"></span>
+            <button type="button" class="pick" data-field="o" aria-haspopup="dialog" aria-labelledby="lbl-o val-o"><span class="pick-val" id="val-o"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          </div>
+        </li>
+        <li class="step" data-step="a">
+          <span class="num" aria-hidden="true">2</span>
+          <div class="step-body">
+            <span class="step-label" id="lbl-a" data-t="audan"></span>
+            <button type="button" class="pick" data-field="a" aria-haspopup="dialog" aria-labelledby="lbl-a val-a"><span class="pick-val" id="val-a"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          </div>
+        </li>
+        <li class="step" data-step="s">
+          <span class="num" aria-hidden="true">3</span>
+          <div class="step-body">
+            <span class="step-label" id="lbl-s" data-t="school"></span>
+            <button type="button" class="pick" data-field="s" aria-haspopup="dialog" aria-labelledby="lbl-s val-s"><span class="pick-val" id="val-s"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          </div>
+        </li>
+        <li class="step" data-step="c">
+          <span class="num" aria-hidden="true">4</span>
+          <div class="step-body">
+            <span class="step-label" id="lbl-c" data-t="klass"></span>
+            <div class="chips" id="chips" role="radiogroup" aria-labelledby="lbl-c"></div>
+          </div>
+        </li>
+      </ol>
+    </form>
+  </section>
+
+  <section class="result" id="result" hidden tabindex="-1" aria-live="polite">
+    <div class="plaque">
+      <div class="plaque-in">
+        <div class="who">
+          <h2 class="school" id="rSchool"></h2>
+          <p class="place" id="rPlace"></p>
+          <p class="teacher" id="rTeacher" hidden></p>
+        </div>
+        <div class="score-hero">
+          <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+            <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8F11A"/><stop offset="1" stop-color="#E4FF8F"/></linearGradient></defs>
+            <circle cx="100" cy="100" r="88" class="ring-bg"/>
+            <circle cx="100" cy="100" r="88" class="ring-fg" id="ringFg"/>
+          </svg>
+          <div class="total">
+            <span class="total-num" id="rTotal">0</span>
+            <span class="total-max" id="rTotalMax"></span>
+            <span class="total-label" id="rTotalLabel"></span>
+          </div>
+        </div>
+        <ul class="parts" id="rParts"></ul>
+        <p class="rank" id="rRank" hidden></p>
+        <div class="status" id="rStatus" hidden>
+          <span class="status-icon" aria-hidden="true"></span>
+          <div><span class="status-label" id="rStatusLabel"></span><strong class="status-text" id="rStatusText"></strong></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn ghost" id="btnSave"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0l-4-4m4 4l4-4M4 15h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="save"></span></button>
+          <button type="button" class="btn ghost" id="btnShare"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 11.5l5-3m-5 0l5 3M15 5.5a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0zm8 4.5a2 2 0 11-4 0 2 2 0 014 0z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span data-t="share"></span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="classview" id="classView" hidden aria-live="polite">
+    <div class="team" id="team" hidden>
+      <div class="team-score">
+        <span class="team-label" id="tLabel"></span>
+        <span class="team-sub" id="tSub"></span>
+      </div>
+      <span class="team-num" id="tTotal"></span>
+    </div>
+    <p class="rank team-rank" id="tRank" hidden></p>
+    <h3 class="cls-title" id="clsTitle"></h3>
+    <ul class="roster" id="roster"></ul>
+    <div class="cls-msg" id="clsMsg" hidden><p id="clsMsgText"></p><button type="button" class="btn ghost" id="clsRetry" data-t="retry"></button></div>
+  </section>
+
+  <section class="empty" id="empty" hidden>
+    <p id="emptyText"></p>
+  </section>
+</main>
+
+<footer class="foot">
+  <a id="contact" class="contact" hidden target="_blank" rel="noopener"></a>
+  <p>© <span id="year"></span> Zerdeli Group</p>
+</footer>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <h3 id="sheetTitle"></h3>
+      <button type="button" class="x" data-close data-t-aria="close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="search" id="sheetSearch" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-controls="sheetList">
+    </div>
+    <ul class="sheet-list" id="sheetList" role="listbox"></ul>
+    <p class="sheet-none" id="sheetNone" hidden data-t="nothing"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<script src="/app.js" defer></script>
+</body>
+</html>
