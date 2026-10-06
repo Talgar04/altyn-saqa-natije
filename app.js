@@ -19,7 +19,7 @@
       absentTitle: 'Олимпиадаға қатыспады', absentText: 'Бұл оқушы мектепішілік кезеңге қатыспаған.',
       classErr: 'Сынып тізімі жүктелмеді. Қайталап көріңіз.', notFound: 'Оқушы табылмады. Сілтемені тексеріңіз немесе тізімнен қайта таңдаңыз.',
       back: 'Сынып тізіміне оралу', backHome: 'Басты бетке',
-      ribbonYes: 'Келесі кезеңге өтті!', ribbonNo: 'Жарайсың!', ribbonPending: 'Нәтиже дайын',
+      ribbonYes: 'Келесі кезеңге өтті!', ribbonNo: 'Жарайсың!', ribbonPending: 'Жарайсың!', cardThanks: 'Қатысқаныңыз үшін рахмет!',
       reactTitleYes: 'Балаңызға тілегіңізді білдіріңіз', reactTitleNo: 'Балаңызды қолдап жіберіңіз',
       r_pray: 'Сәттілік!', r_clap: 'Жарайсың!', r_heart: 'Мақтанамыз', r_fire: 'Алға!', r_strong: 'Келесі жолы!',
       sign: 'Құрметпен, «{title}» олимпиадасының ұйымдастырушылары',
@@ -43,7 +43,7 @@
       absentTitle: 'Не участвовал(а) в олимпиаде', absentText: 'Этот ученик не принимал участие в школьном этапе.',
       classErr: 'Не удалось загрузить список класса. Попробуйте ещё раз.', notFound: 'Ученик не найден. Проверьте ссылку или выберите заново из списка.',
       back: 'Вернуться к списку класса', backHome: 'На главную',
-      ribbonYes: 'Прошёл(ла) дальше!', ribbonNo: 'Молодец!', ribbonPending: 'Результат готов',
+      ribbonYes: 'Прошёл(ла) дальше!', ribbonNo: 'Молодец!', ribbonPending: 'Молодец!', cardThanks: 'Спасибо за участие!',
       reactTitleYes: 'Поддержите ребёнка своим пожеланием', reactTitleNo: 'Поддержите своего ребёнка',
       r_pray: 'Удачи!', r_clap: 'Молодец!', r_heart: 'Гордимся', r_fire: 'Вперёд!', r_strong: 'В следующий раз!',
       sign: 'С уважением, организаторы олимпиады «{title}»',
@@ -74,7 +74,6 @@
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const phoneDigits = (p) => { let d = String(p || '').replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); if (d.length === 10) d = '7' + d; return d; };
   const waLink = (p) => `https://wa.me/${phoneDigits(p)}?text=${encodeURIComponent(t('waText'))}`;
-  const phonePretty = (p) => { const d = phoneDigits(p); return d.length === 11 ? `8 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9)}` : p; };
 
   /* ================================================================ state */
   let data = null;            // /api/site
@@ -99,8 +98,24 @@
     return tr;
   }
   const oblysIndex = (o) => (data && data.oblys ? data.oblys.findIndex((x) => x.o === o) : -1);
+  // Старый текст письма «Позже» упоминал «келесі кезеңге өту» — заменяем его нейтральным, если админ его не менял
+  const OLD_PENDING = ['Келесі кезеңге өту нәтижесі жақында жарияланады. Қатысқаның үшін рахмет!', 'Результат прохождения в следующий этап будет объявлен скоро. Спасибо за участие!'];
+  const NEUTRAL_LETTER = {
+    title: { kk: 'Жарайсың, {name}!', ru: 'Молодец, {name}!' },
+    body: {
+      kk: '«Алтын сақа» олимпиадасының мектепішілік кезеңіне қатысып, өз біліміңді сынағаның — үлкен жетістік! Сен қиын тапсырмалардан қорықпай, барыңды салдың.\n\nБіз сенің талпынысыңды бағалаймыз және мақтан тұтамыз. Білімге деген осы құштарлығың әрдайым жолыңды ашық етсін! Қатысқаның үшін рахмет!',
+      ru: 'Участвовать в школьном этапе олимпиады «Алтын сақа» и проверить свои знания — уже большое достижение! Ты не испугался(лась) сложных заданий и выложился(лась) на полную.\n\nМы ценим твоё стремление и гордимся тобой. Пусть любовь к знаниям всегда открывает тебе новые дороги! Спасибо за участие!',
+    },
+  };
+  function neutralLetter(L) {
+    if (!L) return NEUTRAL_LETTER;
+    const b = L.body || {};
+    const old = OLD_PENDING.includes(String(b.kk || '').trim()) || OLD_PENDING.includes(String(b.ru || '').trim()) || (!String(b.kk || '').trim() && !String(b.ru || '').trim());
+    return old ? NEUTRAL_LETTER : L;
+  }
   function statusOf(x) {
     if (x.absent) return 'absent';
+    if (!data.settings.show.st) return 'pending'; // «Келесі кезең» скрыт в админке → никому не пишем прошёл/не прошёл
     if (x.st === 1) return 'yes';
     if (x.st === 2) return 'no';
     return data.settings.emptyStatus === 'pending' ? 'pending' : 'no';
@@ -244,7 +259,7 @@
     const fp = $('footPhone');
     if (p.show && p.phone) {
       fp.hidden = false; fp.replaceChildren(t('footCall') + ' ');
-      const a = el('a', '', phonePretty(p.phone)); a.href = waLink(p.phone); a.target = '_blank'; a.rel = 'noopener'; fp.append(a);
+      const a = el('a', '', t('whatsapp')); a.href = waLink(p.phone); a.target = '_blank'; a.rel = 'noopener'; fp.append(a);
     } else fp.hidden = true;
     const st = $('stats');
     st.hidden = !(s.show.stats && data.stats && data.stats.students);
@@ -264,11 +279,8 @@
     const inn = el('div', 'promo-in');
     if (pickL(p.badge)) inn.append(el('span', 'promo-badge', pickL(p.badge)));
     inn.append(el('h2', '', pickL(p.title)));
-    if (pickL(p.text)) inn.append(el('p', '', pickL(p.text)));
-    const ph = el('a', 'promo-phone'); ph.href = waLink(p.phone); ph.target = '_blank'; ph.rel = 'noopener';
-    ph.innerHTML = '<i class="wa-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0012.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.35-.5.05-.98.24-3.3-.69-2.79-1.1-4.56-3.95-4.7-4.13-.14-.18-1.12-1.49-1.12-2.85 0-1.35.71-2.02.96-2.29.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.7 1.16 1.51 1.88 1.04.93 1.92 1.21 2.19 1.35.27.14.43.12.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.34z"/></svg></i>';
-    ph.append(phonePretty(p.phone));
-    inn.append(ph);
+    const ptxt = String(pickL(p.text) || '').replace(/телефон арқылы/gi, 'WhatsApp арқылы').replace(/по телефону/gi, 'в WhatsApp').replace(/\s*(\+?7|8)[\s(-]*7\d{2}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}/g, '');
+    if (ptxt) inn.append(el('p', '', ptxt));
     const act = el('div', 'promo-actions');
     const wa = el('a', 'btn wa'); wa.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0012.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.35-.5.05-.98.24-3.3-.69-2.79-1.1-4.56-3.95-4.7-4.13-.14-.18-1.12-1.49-1.12-2.85 0-1.35.71-2.02.96-2.29.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.7 1.16 1.51 1.88 1.04.93 1.92 1.21 2.19 1.35.27.14.43.12.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.34z"/></svg>'; wa.append(el('span', '', t('whatsapp')));
     wa.href = waLink(p.phone); wa.target = '_blank'; wa.rel = 'noopener';
@@ -543,7 +555,7 @@
     }
     card.append(inn); out.push(card);
     // письмо
-    const L = s.letters[kind];
+    const L = kind === 'pending' ? neutralLetter(s.letters.pending) : s.letters[kind];
     const name = (x.n || '').split(' ').slice(-1)[0] || x.n; // обращение по имени (в таблице «Фамилия Имя»)
     if (L && (pickL(L.title) || pickL(L.body))) {
       const letter = el('article', 'letter ' + kind);
@@ -561,7 +573,7 @@
     const sb = el('button', 'btn wa'); sb.type = 'button'; sb.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0012.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.35-.5.05-.98.24-3.3-.69-2.79-1.1-4.56-3.95-4.7-4.13-.14-.18-1.12-1.49-1.12-2.85 0-1.35.71-2.02.96-2.29.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.7 1.16 1.51 1.88 1.04.93 1.92 1.21 2.19 1.35.27.14.43.12.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.34z"/></svg>'; sb.append(el('span', '', t('share'))); sb.addEventListener('click', () => share(sb)); act.prepend(sb);
     out.push(act);
     const p = s.promo;
-    if (p.show && p.phone && (p.onChild === 'all' || (p.onChild === 'passed' && kind === 'yes'))) { const pn = promoNode(); pn.removeAttribute('id'); out.push(pn); }
+    if (p.show && p.phone && (p.onChild === 'all' || (p.onChild === 'passed' && (kind === 'yes' || (kind === 'pending' && !s.show.st))))) { const pn = promoNode(); pn.removeAttribute('id'); out.push(pn); }
     return out;
   }
   function animateChild(x) {
@@ -583,12 +595,12 @@
       const step = (now) => { if (!num.isConnected) return; const p = Math.min(1, (now - start) / 1500); const e = 1 - Math.pow(1 - p, 3); num.textContent = p < 1 ? fmt(isInt ? Math.round(x.t * e) : Math.round(x.t * e * 10) / 10) : fmt(x.t); if (p < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
     }
-    if (kind === 'yes' && s.confetti) setTimeout(() => celebrate(), 700);
+    if ((kind === 'yes' || (kind === 'pending' && !s.show.st)) && s.confetti) setTimeout(() => celebrate(), 700);
     else if (kind === 'no') setTimeout(() => softStars(), 500);
   }
 
   /* ================================================================ reactions */
-  const REACT_SETS = { yes: ['pray', 'clap', 'heart', 'fire'], no: ['strong', 'heart', 'clap', 'pray'], pending: ['clap', 'heart', 'pray'] };
+  const REACT_SETS = { yes: ['pray', 'clap', 'heart', 'fire'], no: ['strong', 'heart', 'clap', 'pray'], pending: ['clap', 'heart', 'pray', 'fire'] };
   const EMOJI = { pray: '🤲', clap: '👏', heart: '❤️', fire: '🔥', strong: '💪' };
   function reactionsNode(x, kind) {
     const box = el('section', 'reacts');
@@ -743,8 +755,8 @@
         y += 150;
       }
       if (s.show.place && x.place) { c.font = disp(700, 32); c.fillStyle = ['', '#F5D46B', '#DCE3F0', '#E3A36F'][x.place] || '#B6A6E6'; c.fillText(`${pickL(s.labels.place)}: ${t('placeN')(roman(x.place))}`, W / 2, y + 22, W - 200); y += 70; }
-      if (s.show.st) {
-        const label = pickL(s.statusText[kind]); c.font = disp(700, 30);
+      if (s.show.st || kind === 'no') {
+        const label = kind === 'no' ? t('cardThanks') : pickL(s.statusText[kind]); c.font = disp(700, 30);
         const w = Math.min(W - 160, c.measureText(label).width + 80);
         c.fillStyle = gold ? '#F2C94C' : 'rgba(182,166,230,.16)'; rr(c, W / 2 - w / 2, y, w, 76, 38); c.fill();
         c.fillStyle = gold ? '#2A1A00' : '#F5F1FF'; c.fillText(label, W / 2, y + 49, w - 50); y += 76;
@@ -752,7 +764,7 @@
       return y;
     }
     const probe = document.createElement('canvas').getContext('2d');
-    const H = Math.max(1350, Math.ceil(content(probe) + 230));
+    const H = Math.max(1350, Math.ceil(content(probe) + 200));
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const c = cv.getContext('2d');
     let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, gold ? '#2E1A63' : '#24135F'); g.addColorStop(1, '#0D0724'); c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -768,11 +780,10 @@
       c.font = disp(700, 30); c.fillStyle = '#FFFFFF';
       const label = 'Zerdeli App'; const tw = c.measureText(label).width; const sz = 56; const gap = 16;
       const x0 = W / 2 - (sz + gap + tw) / 2;
-      c.save(); rr(c, x0, H - 160, sz, sz, 14); c.clip(); c.drawImage(ap, x0, H - 160, sz, sz); c.restore();
-      c.textAlign = 'left'; c.fillText(label, x0 + sz + gap, H - 121);
-      c.textAlign = 'center'; c.font = txt(500, 24); c.fillStyle = 'rgba(182,166,230,.8)'; c.fillText(location.host, W / 2, H - 66);
+      c.save(); rr(c, x0, H - 150, sz, sz, 14); c.clip(); c.drawImage(ap, x0, H - 150, sz, sz); c.restore();
+      c.textAlign = 'left'; c.fillText(label, x0 + sz + gap, H - 111);
     }
-    else c.fillText(location.host + '  ·  Zerdeli App', W / 2, H - 78);
+    else { c.font = disp(700, 30); c.fillStyle = '#FFFFFF'; c.fillText('Zerdeli App', W / 2, H - 111); }
     return new Promise((r) => cv.toBlob(r, 'image/png'));
   }
   async function saveImage(btn) {
