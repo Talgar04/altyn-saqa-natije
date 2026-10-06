@@ -688,11 +688,15 @@
   function wrap(ctx, text, maxW) { const words = String(text).split(' '); const lines = []; let line = ''; for (const w of words) { const tt = line ? line + ' ' + w : w; if (ctx.measureText(tt).width > maxW && line) { lines.push(line); line = w; } else line = tt; } if (line) lines.push(line); return lines; }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   async function drawCard() {
-    try { await document.fonts.ready; } catch (e) { /* ignore */ }
+    try {
+      const probe = 'AaӘәҒғҚқҢңӨөҰұҮүҺһІі0123456789«»';
+      await Promise.all(['900', '800', '700'].map(w => document.fonts.load(`${w} 40px Montserrat`, probe)).concat(['400', '600', '700'].map(w => document.fonts.load(`${w} 40px Inter`, probe))));
+      await document.fonts.ready;
+    } catch (e) { /* ignore */ }
     const s = data.settings; const x = current; const kind = statusOf(x); const gold = kind === 'yes';
     const W = 1080;
-    const disp = (w, px) => `${w} ${px}px Unbounded, "Arial Black", sans-serif`;
-    const txt = (w, px) => `${w} ${px}px Onest, "Segoe UI", Arial, sans-serif`;
+    const disp = (w, px) => `${w} ${px}px Montserrat, "Segoe UI", Arial, sans-serif`;
+    const txt = (w, px) => `${w} ${px}px Inter, "Segoe UI", Arial, sans-serif`;
     const clampLines = (c, text, maxW, max) => { const ls = wrap(c, text, maxW); if (ls.length <= max) return ls; const out = ls.slice(0, max); let last = out[max - 1]; while (last.length > 1 && c.measureText(last + '…').width > maxW) last = last.slice(0, -1); out[max - 1] = last.trimEnd() + '…'; return out; };
     const accent = gold ? '#F2C94C' : '#B6A6E6';
     function content(c) {
