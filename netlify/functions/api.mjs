@@ -1,317 +1,578 @@
 /*
- * Zerdeli Results — Netlify Function.
- * Данные берутся только из Google Таблицы (лист «Нәтижелер»), базы данных нет.
- * Настройки сайта — необязательный лист «Баптаулар» в той же таблице.
+ * «Алтын сақа» — нәтижелер сайты. Netlify Function + Netlify Blobs.
+ * Данные хранятся в Netlify Blobs (встроено в Netlify, ничего настраивать не нужно).
  *
- *   GET /api/tree          — список облыс/аудан/мектеп/сынып + настройки (без имён)
- *   GET /api/oblys?o=...   — все ученики одного облыса (имена и баллы)
- *   ?fresh=1               — без кэша (для кабинета)
+ * Публично:  GET /api/site            настройки + список облыс/аудан/мектеп/сынып
+ *            GET /api/oblys?i=&r=     ученики одного облыса (кэш CDN, неизменяемо для r)
+ *            GET/POST /api/react      реакции на странице ребёнка
+ * Админ:     /api/admin/*             вход по паролю
  */
+import crypto from 'node:crypto';
+import zlib from 'node:zlib';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+// Хранилище: Netlify Blobs в продакшене, папка на диске для локальных тестов (BLOBS_DIR).
 
-const SHEET_ID = process.env.SHEET_ID || '1AvwPYSYBbdhM-VupBbwFYxiRTwXozh_qskbabr3sJs4';
-const SHEET_NAME = process.env.SHEET_NAME || 'Нәтижелер';
-const SETTINGS_SHEET = process.env.SETTINGS_SHEET || 'Баптаулар';
-const BASE = process.env.SHEET_BASE || 'https://docs.google.com';
-const MEMO_TTL = 45 * 1000;
+function fsStore(dir) {
+  const file = (k) => path.join(dir, encodeURIComponent(k));
+  const etagOf = (buf) => '"' + crypto.createHash('sha1').update(buf).digest('hex') + '"';
+  return {
+    async get(key) {
+      try { const buf = await fs.readFile(file(key)); return { data: JSON.parse(buf.toString('utf8')), etag: etagOf(buf) }; }
+      catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+    },
+    async set(key, data, opts = {}) {
+      await fs.mkdir(dir, { recursive: true });
+      const cur = await this.get(key);
+      if (opts.onlyIfNew && cur) return { modified: false };
+      if (opts.onlyIfMatch && (!cur || cur.etag !== opts.onlyIfMatch)) return { modified: false };
+      const buf = Buffer.from(JSON.stringify(data));
+      const tmp = file(key) + '.' + process.pid + '.tmp';
+      await fs.writeFile(tmp, buf); await fs.rename(tmp, file(key));
+      return { modified: true, etag: etagOf(buf) };
+    },
+    async exists(key) { try { await fs.access(file(key)); return true; } catch { return false; } },
+    async del(key) { await fs.rm(file(key), { force: true }); },
+    async keys(prefix) {
+      try { return (await fs.readdir(dir)).map(decodeURIComponent).filter((k) => k.startsWith(prefix) && !k.endsWith('.tmp')); }
+      catch { return []; }
+    },
+  };
+}
 
-/* ------------------------------------------------------------ defaults */
+async function blobStore() {
+  const { getStore } = await import('@netlify/blobs');
+  const s = getStore({ name: 'altyn-saqa', consistency: 'strong' });
+  return {
+    async get(key) {
+      const r = await s.getWithMetadata(key, { type: 'json', consistency: 'strong' });
+      return r ? { data: r.data, etag: r.etag } : null;
+    },
+    async set(key, data, opts = {}) {
+      const o = {};
+      if (opts.onlyIfMatch) o.onlyIfMatch = opts.onlyIfMatch;
+      else if (opts.onlyIfNew) o.onlyIfNew = true;
+      const r = await s.setJSON(key, data, o);
+      return r && typeof r.modified === 'boolean' ? r : { modified: true };
+    },
+    async exists(key) { return !!(await s.getMetadata(key, { consistency: 'strong' })); },
+    async del(key) { await s.delete(key); },
+    async keys(prefix) { const { blobs } = await s.list({ prefix }); return blobs.map((b) => b.key); },
+  };
+}
+
+let cached;
+async function store() {
+  if (!cached) cached = process.env.BLOBS_DIR ? fsStore(process.env.BLOBS_DIR) : await blobStore();
+  return cached;
+}
+
+async function purge() {
+  if (process.env.BLOBS_DIR) return;
+  try { const { purgeCache } = await import('@netlify/functions'); await purgeCache({ tags: ['site'] }); }
+  catch (e) { console.error('purgeCache:', e && e.message); }
+}
+
+
+/* ------------------------------------------------------------------ defaults */
 const L = (kk, ru) => ({ kk, ru });
-const DEFAULTS = {
-  closed: false,
+export const DEFAULT_SETTINGS = {
+  mode: 'open',                 // open | closed | scheduled
   releaseAt: '',
   title: L('Алтын сақа', 'Алтын сақа'),
-  subtitle: L('Республикалық олимпиада', 'Республиканская олимпиада'),
-  stage: L('Мектепішілік кезең', 'Школьный этап'),
-  labels: {
-    b1: L('Балл 1', 'Балл 1'), b2: L('Балл 2', 'Балл 2'), b3: L('Балл 3', 'Балл 3'),
-    t: L('Жалпы балл', 'Общий балл'), team: L('Команданың жалпы балы', 'Общий балл команды'),
-    st: L('Келесі кезең', 'Следующий этап'),
-    place: L('Мектептегі орны', 'Место в школе'),
-  },
-  show: { b1: true, b2: true, b3: true, st: true },
-  max: { b1: null, b2: null, b3: null, t: null },
-  statusText: {
-    yes: L('Келесі кезеңге өтті', 'Прошли в следующий этап'),
-    no: L('Бұл жолы өтпеді', 'В этот раз не прошли'),
-    pending: L('Нәтиже кейін жарияланады', 'Результат будет объявлен позже'),
-  },
-  showRank: false,
-  showTeam: false,
-  showTeacher: true,
-  rankScope: 'audan',
-  confetti: true,
-  allowDownload: true,
+  subtitle: L('Республикалық олимпиада · 3–4 сынып', 'Республиканская олимпиада · 3–4 класс'),
+  stage: L('Мектепішілік кезең нәтижелері', 'Результаты школьного этапа'),
+  heroText: L('Балаңыздың нәтижесін көру үшін облысты, ауданды, мектепті және сыныпты таңдаңыз.',
+    'Чтобы увидеть результат ребёнка, выберите область, район, школу и класс.'),
   announcement: L('', ''),
   closedText: L('Нәтижелер жақында жарияланады', 'Результаты скоро будут опубликованы'),
-  notFoundText: L('Бұл оқушы бойынша нәтиже әзірге жоқ', 'Результата пока нет'),
-  contact: { text: L('', ''), url: '' },
+  labels: {
+    b1: L('Балл 1', 'Балл 1'), b2: L('Балл 2', 'Балл 2'), b3: L('Балл 3', 'Балл 3'),
+    t: L('Жалпы балл', 'Общий балл'), place: L('Мектептегі орны', 'Место в школе'),
+    st: L('Келесі кезең', 'Следующий этап'),
+  },
+  show: { b1: true, b2: true, b3: true, st: true, place: true, teacher: true, stats: true },
+  max: { b1: null, b2: null, b3: null, t: null },
+  emptyStatus: 'no',            // пустой «Келесі кезеңге өтті» = не прошёл (no) или «позже» (pending)
+  statusText: {
+    yes: L('Аудандық кезеңге өтті', 'Прошёл(ла) в районный этап'),
+    no: L('Бұл жолы өтпеді', 'В этот раз не прошёл(ла)'),
+    pending: L('Нәтиже кейін жарияланады', 'Результат будет объявлен позже'),
+  },
+  letters: {
+    yes: {
+      title: L('Құттықтаймыз, {name}!', 'Поздравляем, {name}!'),
+      body: L(
+        'Сен «Алтын сақа» олимпиадасының мектепішілік кезеңінде жоғары нәтиже көрсетіп, аудандық кезеңге жолдама алдың! Бұл — сенің ізденісіңнің, қажырлы еңбегіңнің және сені қолдаған ұстаздарың мен ата-анаңның жемісі.\n\nАлда — жаңа белес. Аудандық кезеңде де осы табандылығыңнан, білімге деген құштарлығыңнан жазба. Біз сені мақтан тұтамыз! Жолың ашық болсын, сәттілік серік болсын!',
+        'Ты показал(а) высокий результат на школьном этапе олимпиады «Алтын сақа» и получил(а) путёвку в районный этап! Это плод твоего упорства, трудолюбия и поддержки твоих учителей и родителей.\n\nВпереди — новая высота. Сохрани эту целеустремлённость и любовь к знаниям на районном этапе. Мы гордимся тобой! Пусть удача будет рядом!'),
+    },
+    no: {
+      title: L('Жарайсың, {name}!', 'Молодец, {name}!'),
+      body: L(
+        'Олимпиадаға қатысудың өзі — үлкен батылдық пен ерік-жігердің белгісі. Сен өз біліміңді сынап, қиын есептермен күресіп, баға жетпес тәжірибе жинадың. Бұл деңгейге жеткенің — нағыз жетістік!\n\nБұл жолы келесі кезеңге өте алмадың, бірақ бұл — соңы емес, жаңа бастама. Ренжіме! Әрбір олимпиада сені күшті әрі тәжірибелі ете түседі. Біз сенің талпынысыңды бағалаймыз және келесі жолы ең биік белестен көрінетініңе сенеміз!',
+        'Участие в олимпиаде — это уже смелость и сила характера. Ты проверил(а) свои знания, справлялся(лась) со сложными задачами и получил(а) бесценный опыт. Дойти до этого уровня — настоящее достижение!\n\nВ этот раз пройти дальше не получилось, но это не конец, а начало. Не расстраивайся! Каждая олимпиада делает тебя сильнее и опытнее. Мы ценим твоё стремление и верим, что в следующий раз ты будешь на высоте!'),
+    },
+    pending: {
+      title: L('{name}, нәтижең дайын!', '{name}, твой результат готов!'),
+      body: L('Келесі кезеңге өту нәтижесі жақында жарияланады. Қатысқаның үшін рахмет!',
+        'Результат прохождения в следующий этап будет объявлен скоро. Спасибо за участие!'),
+    },
+  },
+  reactions: true,
+  confetti: true,
+  download: true,
+  promo: {
+    show: true,
+    onChild: 'passed',          // passed | all | none — показывать рекламу на странице ребёнка
+    badge: L('Дайындық курсы', 'Курс подготовки'),
+    title: L('Аудандық кезеңге дайындалайық!', 'Подготовимся к районному этапу!'),
+    text: L('Балаңыз аудандық кезеңге жүйелі дайындалсын десеңіз — тәжірибелі ұстаздармен арнайы дайындық курсына жазылыңыз. Толық ақпарат пен жазылу — телефон арқылы.',
+      'Хотите, чтобы ребёнок системно подготовился к районному этапу? Запишитесь на специальный курс подготовки с опытными преподавателями. Подробности и запись — по телефону.'),
+    phone: '87078184884',
+    whatsapp: true,
+  },
 };
 
-/* ------------------------------------------------------------ helpers */
+/* ------------------------------------------------------------------ helpers */
 const clean = (v, max = 300) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max);
+const cleanMulti = (v, max = 3000) => String(v == null ? '' : v).replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 function num(v) {
-  const s = String(v == null ? '' : v).trim().replace(/\s/g, '').replace(',', '.');
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null;
+  const s = String(v).trim().replace(/\s/g, '').replace(',', '.');
   if (s === '' || s === '-' || s === '—') return null;
   const n = Number(s);
   return Number.isFinite(n) ? Math.round(n * 1000) / 1000 : null;
 }
-function parseStatus(v) {
+const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
+function merge(base, over) {
+  if (!isObj(base)) return over === undefined ? base : over;
+  const out = {};
+  for (const k of Object.keys(base)) out[k] = over && over[k] !== undefined ? merge(base[k], over[k]) : (isObj(base[k]) ? merge(base[k], undefined) : base[k]);
+  return out;
+}
+export function sanitizeSettings(input) {
+  const s = merge(DEFAULT_SETTINGS, input || {});
+  const bi = (o, max, multi) => ({ kk: (multi ? cleanMulti : clean)(o && o.kk, max), ru: (multi ? cleanMulti : clean)(o && o.ru, max) });
+  s.mode = ['open', 'closed', 'scheduled'].includes(s.mode) ? s.mode : 'open';
+  s.releaseAt = s.releaseAt && !isNaN(Date.parse(s.releaseAt)) ? new Date(s.releaseAt).toISOString() : '';
+  for (const k of ['title', 'subtitle', 'stage']) s[k] = bi(s[k], 160);
+  for (const k of ['heroText', 'announcement', 'closedText']) s[k] = bi(s[k], 600, true);
+  for (const k of Object.keys(DEFAULT_SETTINGS.labels)) s.labels[k] = bi(s.labels[k], 80);
+  for (const k of Object.keys(DEFAULT_SETTINGS.statusText)) s.statusText[k] = bi(s.statusText[k], 120);
+  for (const k of Object.keys(DEFAULT_SETTINGS.letters)) s.letters[k] = { title: bi(s.letters[k].title, 160), body: bi(s.letters[k].body, 3000, true) };
+  for (const k of Object.keys(DEFAULT_SETTINGS.show)) s.show[k] = !!s.show[k];
+  for (const k of Object.keys(DEFAULT_SETTINGS.max)) { const n = num(s.max[k]); s.max[k] = n && n > 0 ? n : null; }
+  s.emptyStatus = s.emptyStatus === 'pending' ? 'pending' : 'no';
+  s.reactions = !!s.reactions; s.confetti = !!s.confetti; s.download = !!s.download;
+  const p = s.promo;
+  s.promo = {
+    show: !!p.show, onChild: ['passed', 'all', 'none'].includes(p.onChild) ? p.onChild : 'passed',
+    badge: bi(p.badge, 60), title: bi(p.title, 160), text: bi(p.text, 1200, true),
+    phone: clean(p.phone, 30).replace(/[^\d+]/g, ''), whatsapp: !!p.whatsapp,
+  };
+  return s;
+}
+const isOpen = (s) => s.mode === 'open' || (s.mode === 'scheduled' && !!s.releaseAt && Date.now() >= Date.parse(s.releaseAt));
+
+/* ------------------------------------------------------------------ shard codec
+ * Строка ученика: [a, s, c, имя, b1, b2, b3, t, орын, статус(0/1/2), қатыспады(0/1), мұғалім, тіл, id]
+ * a, s, c, мұғалім, тіл — индексы в словаре d (мұғалім/тіл: -1 если пусто). */
+export function decodeShard(sh) {
+  const d = sh.d || [];
+  return (sh.r || []).map((x) => ({
+    a: d[x[0]], s: d[x[1]], c: d[x[2]], n: x[3], b1: x[4], b2: x[5], b3: x[6], t: x[7],
+    place: x[8] || 0, st: x[9] || 0, absent: x[10] ? 1 : 0, teacher: x[11] >= 0 ? d[x[11]] : '', lang: x[12] >= 0 ? d[x[12]] : '', id: x[13],
+  }));
+}
+export function encodeShard(o, rev, rows) {
+  const d = []; const di = new Map();
+  const ix = (v) => { if (!v) return -1; if (!di.has(v)) { di.set(v, d.length); d.push(v); } return di.get(v); };
+  const r = rows.map((x) => [ix(x.a), ix(x.s), ix(x.c), x.n, x.b1, x.b2, x.b3, x.t, x.place || 0, x.st || 0, x.absent ? 1 : 0, ix(x.teacher), ix(x.lang), x.id]);
+  return { o, rev, d, r };
+}
+function classesOf(rows) {
+  const m = new Map();
+  for (const x of rows) { const k = x.a + '\u0001' + x.s + '\u0001' + x.c; m.set(k, (m.get(k) || 0) + 1); }
+  return [...m].map(([k, n]) => [...k.split('\u0001'), n]);
+}
+const parseSt = (v) => {
+  if (v === 0 || v === 1 || v === 2) return v;
   const s = clean(v).toLowerCase();
   if (!s) return 0;
-  if (/^(иә|ия|иа|да|yes|y|true|1|\+|✓|✔|өтті|отті|прош(ел|ёл|ла|ли)|passed|pass)$/.test(s)) return 1;
-  if (/^(жоқ|жок|нет|no|n|false|0|-|−|✗|✘|өтпеді|отпеди|не прош(ел|ёл|ла|ли)|failed|fail)$/.test(s)) return 2;
-  if (/өтпеді|не прош|fail/.test(s)) return 2;
-  if (/өтті|прош|pass/.test(s)) return 1;
+  if (/^(иә|ия|да|yes|1|\+|өтті|прош)/.test(s)) return 1;
+  if (/^(жоқ|жок|нет|no|2|-|өтпеді|не прош)/.test(s)) return 2;
   return 0;
-}
-function parsePlace(v) {
-  const s = clean(v).toUpperCase().replace(/[^IVX0-9]/g, ' ').trim().split(' ')[0] || '';
-  const roman = { I: 1, II: 2, III: 3, IV: 4, V: 5 };
-  if (roman[s]) return roman[s];
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) && n > 0 && n < 100 ? n : 0;
-}
-const absent = (v) => /^(жоқ|жок|нет|no|0|false|қатыспады|не участвовал)/i.test(clean(v));
-const yes = (v) => /^(иә|ия|да|yes|true|1|\+|on|қосу|вкл)/i.test(clean(v));
-
-function parseCsv(text) {
-  text = String(text || '').replace(/^\uFEFF/, '');
-  const rows = []; let row = []; let cell = ''; let q = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (q) {
-      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch;
-    } else if (ch === '"' && cell === '') q = true;
-    else if (ch === ',') { row.push(cell); cell = ''; }
-    else if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && text[i + 1] === '\n') i++;
-      row.push(cell); rows.push(row); row = []; cell = '';
-    } else cell += ch;
+};
+function sanitizeStudent(p, base) {
+  const x = { ...(base || {}) };
+  for (const [f, max] of [['a', 200], ['s', 300], ['c', 20], ['n', 200], ['teacher', 150], ['lang', 30]]) if (p[f] !== undefined) x[f] = clean(p[f], max);
+  for (const f of ['b1', 'b2', 'b3', 't']) if (p[f] !== undefined) {
+    if (p[f] !== null && p[f] !== '' && num(p[f]) === null) throw httpErr(400, 'Балл должен быть числом');
+    x[f] = num(p[f]);
   }
-  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
-  return rows;
+  if (p.place !== undefined) { const n = parseInt(p.place, 10); x.place = Number.isFinite(n) && n > 0 && n < 100 ? n : 0; }
+  if (p.st !== undefined) x.st = parseSt(p.st);
+  if (p.absent !== undefined) x.absent = p.absent ? 1 : 0;
+  for (const f of ['b1', 'b2', 'b3', 't']) if (x[f] === undefined) x[f] = null;
+  for (const f of ['a', 's', 'c', 'n', 'teacher', 'lang']) if (x[f] === undefined) x[f] = '';
+  x.place = x.place || 0; x.st = x.st || 0; x.absent = x.absent || 0;
+  if (!x.a || !x.s || !x.c || !x.n) throw httpErr(400, 'Заполните аудан, мектеп, сынып и ФИО');
+  return x;
 }
-const HEADER_RULES = [
-  ['st', /келесі|кезеңге|өтті|прош[её]л|следующ|статус|status|passed/],
-  ['t', /жалпы|барлығы|итог|общ|сумма|total|всего/],
-  ['b1', /(балл|ұпай|упай|score|тур|бал)\D*1|1\D*(балл|ұпай|тур)/],
-  ['b2', /(балл|ұпай|упай|score|тур|бал)\D*2|2\D*(балл|ұпай|тур)/],
-  ['b3', /(балл|ұпай|упай|score|тур|бал)\D*3|3\D*(балл|ұпай|тур)/],
-  ['q', /^қатысты|^қатысу|^участвовал|^присутств|^attend/],
-  ['p', /^орын$|^орны$|^место$|^place$|^орын \(|жүлделі орын/],
-  ['l', /литер|литера|letter|параллел/],
-  ['tch', /мұғалім|муғалім|учитель|педагог|teacher/],
-  ['id', /studentid|student id|^id$/],
-  ['n', /аты|жөн|фио|ф\.\s*и|оқушы|окушы|ученик|участник|қатысушы|студент|name|тегі/],
-  ['o', /облыс|област|oblys|region|өңір/],
-  ['a', /аудан|район|audan|district/],
-  ['s', /мектеп|школ|mektep|school|білім беру ұйым|организац/],
-  ['c', /сынып|класс|synyp|class|grade/],
-];
-function mapHeaders(header) {
-  const map = {};
-  header.forEach((h, i) => {
-    const n = clean(h).toLowerCase();
-    if (!n) return;
-    for (const [f, re] of HEADER_RULES) if (map[f] === undefined && re.test(n)) { map[f] = i; return; }
-  });
-  return map;
-}
-const letter = (i) => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
-const quote = (v) => (!v.includes("'") ? `'${v}'` : !v.includes('"') ? `"${v}"` : null);
 
-class SheetError extends Error {}
-async function gviz(sheet, tq) {
-  const u = new URL(`${BASE}/spreadsheets/d/${SHEET_ID}/gviz/tq`);
-  u.searchParams.set('tqx', 'out:csv');
-  u.searchParams.set('headers', '1');
-  u.searchParams.set('sheet', sheet);
+/* ------------------------------------------------------------------ http */
+function httpErr(status, message) { return Object.assign(new Error(message), { status }); }
+function json(body, status = 200, cache) {
+  const h = { 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' };
+  if (cache) {
+    h['Cache-Control'] = 'public, max-age=0, must-revalidate';
+    h['Netlify-CDN-Cache-Control'] = cache;
+    h['Netlify-Cache-Tag'] = 'site';
+  } else h['Cache-Control'] = 'no-store';
+  return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: h });
+}
+async function readBody(req) {
+  const buf = Buffer.from(await req.arrayBuffer());
+  if (buf.length > 6 * 1024 * 1024) throw httpErr(413, 'Слишком большой запрос');
+  const raw = req.headers.get('x-gz') === '1' ? zlib.gunzipSync(buf) : buf;
+  if (!raw.length) return {};
+  try { return JSON.parse(raw.toString('utf8')); } catch { throw httpErr(400, 'Неверный JSON'); }
+}
+const ipOf = (req) => clean(req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for') || 'x', 64).split(',')[0];
+
+/* ------------------------------------------------------------------ meta */
+const EMPTY_META = () => ({ v: 1, dataId: '', rev: 1, updatedAt: '', settings: sanitizeSettings({}), oblys: [], cls: {}, log: [] });
+let memo = { at: 0, meta: null, etag: '' };
+async function loadMeta(fresh) {
+  if (!fresh && memo.meta && Date.now() - memo.at < 3000) return memo;
+  const st = await store();
+  const got = await st.get('meta');
+  memo = got ? { at: Date.now(), meta: { ...EMPTY_META(), ...got.data, settings: sanitizeSettings(got.data.settings) }, etag: got.etag }
+    : { at: Date.now(), meta: EMPTY_META(), etag: '' };
+  return memo;
+}
+async function mutate(key, fn, initial) {
+  const st = await store();
+  for (let i = 0; i < 6; i++) {
+    const cur = await st.get(key);
+    const data = cur ? cur.data : (typeof initial === 'function' ? initial() : initial);
+    const next = await fn(data);
+    if (next === undefined) return data;
+    const res = await st.set(key, next, cur ? { onlyIfMatch: cur.etag } : { onlyIfNew: true });
+    if (res.modified) return next;
+    await new Promise((r) => setTimeout(r, 40 + Math.random() * 120));
+  }
+  throw httpErr(409, 'Данные одновременно меняются из другого окна — попробуйте ещё раз');
+}
+async function mutateMeta(fn) {
+  const out = await mutate('meta', async (m) => {
+    const meta = { ...EMPTY_META(), ...m, settings: sanitizeSettings(m.settings) };
+    const r = await fn(meta);
+    if (r === false) return undefined;
+    meta.rev = (meta.rev || 0) + 1; meta.updatedAt = new Date().toISOString();
+    return meta;
+  }, EMPTY_META);
+  memo = { at: 0, meta: null, etag: '' };
+  await purge();
+  return out;
+}
+const addLog = (meta, text) => { meta.log = [{ at: new Date().toISOString(), text: clean(text, 300) }, ...(meta.log || [])].slice(0, 200); };
+
+/* ------------------------------------------------------------------ public */
+let siteCache = { key: '', body: '' };
+function publicSettings(s) {
+  const { mode, ...rest } = s;
+  return { ...rest, releaseAt: mode === 'scheduled' ? s.releaseAt : '' };
+}
+async function site() {
+  const { meta, etag } = await loadMeta(false);
+  const s = meta.settings;
+  const open = isOpen(s) && !!meta.dataId;
+  const key = etag + '|' + open;
+  if (siteCache.key === key) return siteCache.body;
+  const body = { rev: meta.rev, open, settings: publicSettings(s), hasData: !!meta.dataId };
+  const students = meta.oblys.reduce((a, o) => a + (o.n || 0), 0);
+  let schools = 0;
+  for (const list of Object.values(meta.cls || {})) schools += new Set(list.map((c) => c[0] + '|' + c[1])).size;
+  body.stats = { students, schools, oblys: meta.oblys.length };
+  if (open) {
+    const d = []; const di = new Map();
+    const ix = (v) => { if (!di.has(v)) { di.set(v, d.length); d.push(v); } return di.get(v); };
+    body.oblys = meta.oblys.map((o) => ({ o: o.o, rev: o.rev }));
+    body.d = d; body.k = [];
+    meta.oblys.forEach((o, i) => { for (const c of meta.cls[i] || []) body.k.push([i, ix(c[0]), ix(c[1]), ix(c[2]), c[3]]); });
+  }
+  siteCache = { key, body: JSON.stringify(body) };
+  return siteCache.body;
+}
+const shardKey = (meta, i) => `s/${meta.dataId}/${i}`;
+async function publicShard(i) {
+  const { meta } = await loadMeta(false);
+  if (!isOpen(meta.settings) || !meta.oblys[i]) return null;
+  const st = await store();
+  const got = await st.get(shardKey(meta, i));
+  return got ? got.data : null;
+}
+
+const REACTIONS = ['pray', 'clap', 'heart', 'fire', 'strong'];
+const reactHits = new Map();
+function reactRateOk(ip) {
+  const now = Date.now();
+  let e = reactHits.get(ip);
+  if (!e || e.reset < now) { e = { n: 0, reset: now + 60000 }; reactHits.set(ip, e); }
+  if (reactHits.size > 20000) reactHits.clear();
+  return ++e.n <= 40;
+}
+
+/* ------------------------------------------------------------------ auth */
+async function authInfo() {
+  const st = await store();
+  const got = await st.get('auth');
+  return got ? got.data : null;
+}
+const hashPw = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
+function safeEq(a, b) { const x = Buffer.from(String(a)); const y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); }
+async function checkPassword(pw) {
+  if (typeof pw !== 'string' || !pw) return false;
+  if (process.env.ADMIN_PASSWORD && safeEq(pw, process.env.ADMIN_PASSWORD)) return true;
+  const a = await authInfo();
+  return !!(a && a.hash && safeEq(hashPw(pw, a.salt), a.hash));
+}
+async function secret() {
+  const a = await authInfo();
+  return (a && a.secret) || crypto.createHash('sha256').update('altyn|' + (process.env.ADMIN_PASSWORD || '')).digest('hex');
+}
+async function makeToken() {
+  const exp = Date.now() + 14 * 24 * 3600 * 1000;
+  const sig = crypto.createHmac('sha256', await secret()).update(String(exp)).digest('base64url');
+  return `${exp}.${sig}`;
+}
+async function verifyToken(req) {
+  const t = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const [exp, sig] = t.split('.');
+  if (!exp || !sig || Number(exp) < Date.now()) return false;
+  const good = crypto.createHmac('sha256', await secret()).update(exp).digest('base64url');
+  return safeEq(sig, good);
+}
+const loginHits = new Map();
+
+/* ------------------------------------------------------------------ admin */
+async function admin(req, path, method) {
+  if (path === 'status' && method === 'GET') {
+    const a = await authInfo();
+    return json({ setup: !a && !process.env.ADMIN_PASSWORD });
+  }
+  if (path === 'setup' && method === 'POST') {
+    if (process.env.ADMIN_PASSWORD || (await authInfo())) throw httpErr(403, 'Пароль уже задан');
+    const { password } = await readBody(req);
+    if (typeof password !== 'string' || password.length < 8) throw httpErr(400, 'Пароль — минимум 8 символов');
+    const salt = crypto.randomBytes(16).toString('hex');
+    const st = await store();
+    const r = await st.set('auth', { salt, hash: hashPw(password, salt), secret: crypto.randomBytes(32).toString('hex') }, { onlyIfNew: true });
+    if (!r.modified) throw httpErr(403, 'Пароль уже задан');
+    return json({ token: await makeToken() });
+  }
+  if (path === 'login' && method === 'POST') {
+    const ip = ipOf(req);
+    const e = loginHits.get(ip) || { n: 0, until: Date.now() + 15 * 60000 };
+    if (e.n >= 10 && e.until > Date.now()) throw httpErr(429, 'Слишком много попыток. Подождите 15 минут.');
+    const { password } = await readBody(req);
+    if (!(await checkPassword(password))) { e.n++; loginHits.set(ip, e); throw httpErr(401, 'Неверный пароль'); }
+    loginHits.delete(ip);
+    return json({ token: await makeToken() });
+  }
+  if (!(await verifyToken(req))) throw httpErr(401, 'Нужно войти');
+
+  const st = await store();
+  if (path === 'meta' && method === 'GET') {
+    const { meta } = await loadMeta(true);
+    const prev = await st.get('meta-prev');
+    return json({ ...meta, open: isOpen(meta.settings), canRollback: !!(prev && prev.data.dataId) });
+  }
+  if (path === 'oblys' && method === 'GET') {
+    const i = Number(new URL(req.url).searchParams.get('i'));
+    const { meta } = await loadMeta(true);
+    if (!meta.oblys[i]) throw httpErr(404, 'Облыс не найден');
+    const got = await st.get(shardKey(meta, i));
+    return json(got ? got.data : { o: meta.oblys[i].o, rev: 0, d: [], r: [] });
+  }
+  if (path === 'settings' && method === 'PUT') {
+    const body = await readBody(req);
+    const meta = await mutateMeta((m) => { m.settings = sanitizeSettings(merge(m.settings, body.settings || {})); addLog(m, 'Настройки сайта изменены'); });
+    return json({ ok: true, settings: meta.settings, open: isOpen(meta.settings), rev: meta.rev });
+  }
+  if (path === 'password' && method === 'POST') {
+    const { current, next } = await readBody(req);
+    if (!(await checkPassword(current))) throw httpErr(400, 'Текущий пароль неверный');
+    if (typeof next !== 'string' || next.length < 8) throw httpErr(400, 'Новый пароль — минимум 8 символов');
+    const salt = crypto.randomBytes(16).toString('hex');
+    await st.set('auth', { salt, hash: hashPw(next, salt), secret: crypto.randomBytes(32).toString('hex') });
+    return json({ token: await makeToken() });
+  }
+  if (path === 'student' && (method === 'POST' || method === 'DELETE')) {
+    const body = await readBody(req);
+    return json(await editShard(Number(body.i), (rows) => {
+      if (method === 'DELETE') {
+        const k = rows.findIndex((x) => x.id === body.id);
+        if (k < 0) throw httpErr(404, 'Ученик не найден — обновите страницу');
+        const [x] = rows.splice(k, 1);
+        return { log: `Удалён: ${x.n} (${x.s}, ${x.c})` };
+      }
+      if (body.id) {
+        const k = rows.findIndex((x) => x.id === body.id);
+        if (k < 0) throw httpErr(404, 'Ученик не найден — обновите страницу');
+        const x = sanitizeStudent(body.row || {}, rows[k]);
+        rows[k] = x;
+        return { log: `Изменён: ${x.n} (${x.s}, ${x.c})`, row: x };
+      }
+      const x = sanitizeStudent(body.row || {});
+      x.id = 'n' + crypto.randomBytes(8).toString('hex');
+      rows.push(x);
+      return { log: `Добавлен: ${x.n} (${x.s}, ${x.c})`, row: x };
+    }));
+  }
+  if (path === 'bulk' && method === 'POST') {
+    const body = await readBody(req);
+    const ids = new Set(body.ids || []);
+    const stv = parseSt(body.st);
+    return json(await editShard(Number(body.i), (rows) => {
+      let n = 0;
+      for (const x of rows) if (ids.has(x.id)) { x.st = stv; n++; }
+      return { log: `Статус «${['пусто', 'өтті', 'өтпеді'][stv]}» для ${n} учеников` };
+    }));
+  }
+  if (path === 'gsheet' && method === 'POST') {
+    const { url, sheet, tq } = await readBody(req);
+    return new Response(await gviz(url, sheet, tq), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store' } });
+  }
+  if (path === 'import/begin' && method === 'POST') {
+    return json({ dataId: 'd' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex') });
+  }
+  if (path === 'import/shard' && method === 'POST') {
+    const { dataId, i, shard } = await readBody(req);
+    if (!/^d[a-z0-9]{6,30}$/.test(dataId || '') || !Number.isInteger(i) || i < 0 || i > 500) throw httpErr(400, 'Неверные параметры');
+    if (!shard || typeof shard.o !== 'string' || !Array.isArray(shard.d) || !Array.isArray(shard.r)) throw httpErr(400, 'Неверный формат данных');
+    await st.set(`s/${dataId}/${i}`, { o: clean(shard.o, 200), rev: 1, d: shard.d, r: shard.r });
+    return json({ ok: true });
+  }
+  if (path === 'import/commit' && method === 'POST') {
+    const { dataId, oblys, cls, keepReactions } = await readBody(req);
+    if (!/^d[a-z0-9]{6,30}$/.test(dataId || '') || !Array.isArray(oblys) || !oblys.length) throw httpErr(400, 'Неверные параметры');
+    const missing = [];
+    await Promise.all(oblys.map(async (_, i) => { if (!(await st.exists(`s/${dataId}/${i}`))) missing.push(i); }));
+    if (missing.length) throw httpErr(400, `Не все облысы загрузились (${missing.length}). Повторите импорт.`);
+    let prevMeta = null;
+    const meta = await mutateMeta((m) => {
+      prevMeta = JSON.parse(JSON.stringify(m));
+      m.dataId = dataId;
+      m.oblys = oblys.map((o) => ({ o: clean(o.o, 200), n: Number(o.n) || 0, rev: Date.now() % 1e9 }));
+      m.cls = {};
+      oblys.forEach((_, i) => { m.cls[i] = Array.isArray(cls && cls[i]) ? cls[i] : []; });
+      addLog(m, `Импорт: ${m.oblys.reduce((a, o) => a + o.n, 0)} учеников, ${m.oblys.length} облысов`);
+    });
+    if (prevMeta && prevMeta.dataId) await st.set('meta-prev', prevMeta);
+    await cleanupShards([dataId, prevMeta && prevMeta.dataId]);
+    return json({ ok: true, rev: meta.rev });
+  }
+  if (path === 'rollback' && method === 'POST') {
+    const prev = await st.get('meta-prev');
+    if (!prev || !prev.data.dataId) throw httpErr(400, 'Нет предыдущей версии');
+    let cur = null;
+    await mutateMeta((m) => {
+      cur = JSON.parse(JSON.stringify(m));
+      m.dataId = prev.data.dataId; m.oblys = prev.data.oblys; m.cls = prev.data.cls;
+      addLog(m, 'Откат к предыдущему импорту');
+    });
+    if (cur && cur.dataId) await st.set('meta-prev', cur);
+    return json({ ok: true });
+  }
+  throw httpErr(404, 'Not found');
+}
+async function cleanupShards(keep) {
+  try {
+    const st = await store();
+    const keys = await st.keys('s/');
+    const drop = keys.filter((k) => !keep.filter(Boolean).some((id) => k.startsWith(`s/${id}/`)));
+    // удаляем только старые готовые наборы (незавершённые импорты старше часа)
+    await Promise.all(drop.filter((k) => { const id = k.split('/')[1]; const ts = parseInt(id.slice(1, -6), 36); return !ts || Date.now() - ts > 3600000; }).map((k) => st.del(k)));
+  } catch (e) { console.error('cleanup', e); }
+}
+async function editShard(i, fn) {
+  const { meta } = await loadMeta(true);
+  if (!meta.oblys[i]) throw httpErr(404, 'Облыс не найден — обновите страницу');
+  const key = shardKey(meta, i);
+  let res = null; let rows = null; let rev = 0;
+  await mutate(key, (sh) => {
+    rows = decodeShard(sh);
+    res = fn(rows);
+    rev = (sh.rev || 0) + 1;
+    return encodeShard(sh.o, rev, rows);
+  }, () => ({ o: meta.oblys[i].o, rev: 0, d: [], r: [] }));
+  const m2 = await mutateMeta((m) => {
+    if (m.dataId !== meta.dataId || !m.oblys[i]) return false;
+    m.oblys[i] = { ...m.oblys[i], rev: Math.max(rev, (m.oblys[i].rev || 0) + 1), n: rows.length };
+    m.cls = { ...m.cls, [i]: classesOf(rows) };
+    addLog(m, res.log);
+  });
+  return { ok: true, rev: m2.rev, oblysRev: rev, row: res.row || null };
+}
+
+/* ------------------------------------------------------------------ google sheet (разовый перенос) */
+async function gviz(url, sheet, tq) {
+  const m = String(url || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (!m) throw httpErr(400, 'Это не ссылка на Google Таблицу');
+  const u = new URL(`https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq`);
+  u.searchParams.set('tqx', 'out:csv'); u.searchParams.set('headers', '1');
+  if (sheet) u.searchParams.set('sheet', sheet);
   if (tq) u.searchParams.set('tq', tq);
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 9000);
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 9000);
   let res;
-  try { res = await fetch(u, { signal: ctl.signal, redirect: 'follow' }); }
-  catch (e) { throw new SheetError(e.name === 'AbortError' ? 'Google Таблица не ответила за 9 секунд' : 'Нет связи с Google Таблицей'); }
+  try { res = await fetch(process.env.SHEET_BASE ? u.href.replace('https://docs.google.com', process.env.SHEET_BASE) : u, { signal: ctl.signal }); }
+  catch (e) { throw httpErr(502, e.name === 'AbortError' ? 'Google не ответил за 9 секунд — попробуйте ещё раз' : 'Нет связи с Google'); }
   finally { clearTimeout(timer); }
-  const type = res.headers.get('content-type') || '';
   const text = await res.text();
-  if (res.status === 401 || res.status === 403 || /accounts\.google\.com|ServiceLogin/i.test(text.slice(0, 3000))) {
-    throw new SheetError('Таблица закрыта. Откройте доступ: «Настройки доступа → Все, у кого есть ссылка → Читатель».');
-  }
-  if (!res.ok || /text\/html/i.test(type)) throw new SheetError(`Google вернул ошибку ${res.status}`);
-  return parseCsv(text);
+  if (res.status === 401 || res.status === 403 || /accounts\.google\.com|ServiceLogin/i.test(text.slice(0, 3000))) throw httpErr(400, 'Таблица закрыта. Откройте доступ «Все, у кого есть ссылка → Читатель» (только на время переноса).');
+  if (!res.ok || /^\s*<(!doctype|html)/i.test(text)) throw httpErr(502, 'Google вернул ошибку ' + res.status);
+  return text;
 }
 
-/* ------------------------------------------------------------ memo (тёплый экземпляр функции) */
-const memo = new Map();
-async function cached(key, fresh, fn) {
-  const hit = memo.get(key);
-  if (!fresh && hit && Date.now() - hit.at < MEMO_TTL) return hit.p;
-  const p = fn();
-  memo.set(key, { at: Date.now(), p });
-  p.catch(() => memo.delete(key));
-  return p;
-}
-
-/* ------------------------------------------------------------ columns */
-async function getColumns(fresh) {
-  return cached('cols', fresh, async () => {
-    const grid = await gviz(SHEET_NAME, 'select * limit 1');
-    const header = grid[0] || [];
-    const map = mapHeaders(header);
-    const missing = ['o', 'a', 's', 'c'].filter((k) => map[k] === undefined);
-    if (missing.length) {
-      const names = { o: 'Облыс', a: 'Аудан', s: 'Мектеп', c: 'Сынып' };
-      throw new SheetError(`На листе «${SHEET_NAME}» нет колонок: ${missing.map((k) => names[k]).join(', ')}. Найдены: ${header.map(clean).filter(Boolean).join(', ') || 'ничего'}`);
-    }
-    const names = Object.fromEntries(Object.entries(map).map(([k, i]) => [k, clean(header[i])]));
-    return { map, names, letters: Object.fromEntries(Object.entries(map).map(([k, i]) => [k, letter(i)])) };
-  });
-}
-
-/* ------------------------------------------------------------ settings */
-const SETTING_KEYS = {
-  title: ['title'], subtitle: ['subtitle'], stage: ['stage'], announcement: ['announcement'],
-  closed_text: ['closedText'], not_found_text: ['notFoundText'],
-  label_b1: ['labels', 'b1'], label_b2: ['labels', 'b2'], label_b3: ['labels', 'b3'], label_total: ['labels', 't'],
-  label_team: ['labels', 'team'], label_status: ['labels', 'st'], label_place: ['labels', 'place'],
-  status_yes: ['statusText', 'yes'], status_no: ['statusText', 'no'], status_pending: ['statusText', 'pending'],
-  contact_text: ['contact', 'text'],
-};
-const SETTING_FLAGS = {
-  closed: (s, v) => { s.closed = yes(v); },
-  release_at: (s, v) => { const d = Date.parse(clean(v).replace(' ', 'T')); s.releaseAt = Number.isFinite(d) ? new Date(d).toISOString() : ''; },
-  show_b1: (s, v) => { s.show.b1 = yes(v); }, show_b2: (s, v) => { s.show.b2 = yes(v); }, show_b3: (s, v) => { s.show.b3 = yes(v); },
-  show_status: (s, v) => { s.show.st = yes(v); }, show_teacher: (s, v) => { s.showTeacher = yes(v); }, show_rank: (s, v) => { s.showRank = yes(v); }, show_team: (s, v) => { s.showTeam = yes(v); },
-  confetti: (s, v) => { s.confetti = yes(v); }, download: (s, v) => { s.allowDownload = yes(v); },
-  rank_scope: (s, v) => { s.rankScope = /облыс|област|oblys/i.test(v) ? 'oblys' : 'audan'; },
-  max_b1: (s, v) => { s.max.b1 = num(v); }, max_b2: (s, v) => { s.max.b2 = num(v); }, max_b3: (s, v) => { s.max.b3 = num(v); }, max_total: (s, v) => { s.max.t = num(v); },
-  contact_url: (s, v) => { let u = clean(v, 400); if (u && !/^(https?:\/\/|tel:|mailto:)/i.test(u)) u = 'https://' + u; s.contact.url = u; },
-};
-async function getSettings(fresh) {
-  return cached('settings', fresh, async () => {
-    const s = JSON.parse(JSON.stringify(DEFAULTS));
-    let grid;
-    // limit: если листа нет, Google отдаёт первый лист — не тянем 110k строк
-    try { grid = await gviz(SETTINGS_SHEET, 'select A, B, C limit 300'); } catch { return s; }
-    // если листа нет, Google молча отдаёт первый лист — проверяем заголовок
-    if (!grid.length || !/параметр|parameter|key|баптау|настрой/i.test(clean(grid[0][0]))) return s;
-    for (const row of grid.slice(1)) {
-      const key = clean(row[0]).toLowerCase();
-      if (!key) continue;
-      if (SETTING_KEYS[key]) {
-        const [a, b] = SETTING_KEYS[key];
-        const target = b ? s[a][b] : s[a];
-        const kk = clean(row[1], 600), ru = clean(row[2], 600);
-        if (kk || ru) { target.kk = kk || ru; target.ru = ru || kk; } else if (key === 'announcement' || key === 'contact_text' || key === 'stage') { target.kk = ''; target.ru = ''; }
-      } else if (SETTING_FLAGS[key]) SETTING_FLAGS[key](s, row[1]);
-    }
-    return s;
-  });
-}
-// класс = сынып + литер: «3 А»
-function classOf(grade, litera) {
-  const g = clean(grade, 20).replace(/\s*(сынып|класс)\s*/i, '').trim();
-  const lt = clean(litera, 10).replace(/[«»"']/g, '').toUpperCase();
-  return lt ? `${g} ${lt}` : g;
-}
-const isOpen = (s) => !s.closed && !(s.releaseAt && Date.now() < Date.parse(s.releaseAt));
-
-/* ------------------------------------------------------------ data */
-async function getTree(fresh) {
-  return cached('tree', fresh, async () => {
-    const cols = await getColumns(fresh);
-    const { o, a, s, c, l } = cols.letters;
-    const g = [o, a, s, c, l].filter(Boolean).join(',');
-    const grid = await gviz(SHEET_NAME, `select ${g},count(${s}) where ${o} <> '' group by ${g}`);
-    const dict = []; const di = new Map();
-    const d = (str) => { if (!di.has(str)) { di.set(str, dict.length); dict.push(str); } return di.get(str); };
-    const merged = new Map(); const variants = new Map();
-    for (const row of grid.slice(1)) {
-      const raw = row[0];
-      const vo = clean(row[0], 200), va = clean(row[1], 200), vs = clean(row[2], 300);
-      const vc = classOf(row[3], l ? row[4] : '');
-      if (!vo || !va || !vs || !vc) continue;
-      if (!variants.has(vo)) variants.set(vo, new Set());
-      variants.get(vo).add(raw);
-      const k = [vo, va, vs, vc].join('\u0001');
-      merged.set(k, (merged.get(k) || 0) + (num(row[l ? 5 : 4]) || 0));
-    }
-    const k = [];
-    for (const [key, count] of merged) { const [vo, va, vs, vc] = key.split('\u0001'); k.push([d(vo), d(va), d(vs), d(vc), count]); }
-    return { cols, d: dict, k, variants };
-  });
-}
-async function getOblys(name, fresh) {
-  return cached('o:' + name, fresh, async () => {
-    // структуру берём из кэша (≤45 с), свежими читаем только строки облыса
-    let tree = await getTree(false);
-    if (!tree.variants.has(name) && fresh) tree = await getTree(true);
-    const cols = tree.cols;
-    const raws = [...(tree.variants.get(name) || [])];
-    if (!raws.length) return null;
-    const L = cols.letters;
-    const conds = raws.map(quote);
-    let grid; let filterLocally = false;
-    if (conds.every(Boolean)) grid = await gviz(SHEET_NAME, `select * where ${conds.map((q) => `${L.o} = ${q}`).join(' or ')}`);
-    else { grid = await gviz(SHEET_NAME); filterLocally = true; }
-    const m = cols.map;
-    const get = (row, f) => (m[f] === undefined ? '' : row[m[f]]);
-    const dict = []; const di = new Map();
-    const d = (str) => { if (!di.has(str)) { di.set(str, dict.length); dict.push(str); } return di.get(str); };
-    const r = [];
-    for (const row of grid.slice(1)) {
-      const vo = clean(get(row, 'o'), 200);
-      if (filterLocally && vo !== name) continue;
-      const va = clean(get(row, 'a'), 200), vs = clean(get(row, 's'), 300), vc = classOf(get(row, 'c'), get(row, 'l'));
-      if (!va || !vs || !vc) continue;
-      const tch = clean(get(row, 'tch'), 120);
-      r.push([d(va), d(vs), d(vc), clean(get(row, 'n'), 200),
-        num(get(row, 'b1')), num(get(row, 'b2')), num(get(row, 'b3')), num(get(row, 't')), parseStatus(get(row, 'st')),
-        parsePlace(get(row, 'p')), tch ? d(tch) : -1, m.q !== undefined && absent(get(row, 'q')) ? 1 : 0]);
-    }
-    return { o: name, d: dict, r };
-  });
-}
-
-/* ------------------------------------------------------------ handler */
-const JSON_TYPE = 'application/json; charset=utf-8';
-function respond(body, status, fresh, seconds = 60) {
-  const headers = { 'Content-Type': JSON_TYPE, 'X-Content-Type-Options': 'nosniff' };
-  if (fresh || status >= 500) headers['Cache-Control'] = 'no-store';
-  else {
-    headers['Cache-Control'] = 'public, max-age=0, must-revalidate';
-    // общий кэш CDN: ученики получают ответ мгновенно, таблица читается не чаще раза в минуту
-    headers['Netlify-CDN-Cache-Control'] = `public, durable, s-maxage=${seconds}, stale-while-revalidate=600`;
-  }
-  return new Response(JSON.stringify(body), { status, headers });
-}
-
+/* ------------------------------------------------------------------ router */
 export default async (req) => {
   const url = new URL(req.url);
-  const fresh = url.searchParams.has('fresh');
+  const path = url.pathname.replace(/^\/api\//, '');
+  const method = req.method;
   try {
-    if (url.pathname.endsWith('/api/tree')) {
-      const [settings, tree] = await Promise.all([getSettings(fresh), getTree(fresh)]);
-      const open = isOpen(settings);
-      const body = { v: Date.now(), open, settings, cols: tree.cols.names };
-      if (open || fresh) { body.d = tree.d; body.k = tree.k; }
-      return respond(body, 200, fresh, open ? 60 : 20);
+    if (path === 'site' && method === 'GET') return json(await site(), 200, 'public, durable, s-maxage=20, stale-while-revalidate=60');
+    if (path === 'oblys' && method === 'GET') {
+      const sh = await publicShard(Number(url.searchParams.get('i')));
+      if (!sh) return json({ error: 'not found' }, 404);
+      // адрес содержит rev, поэтому ответ можно кэшировать надолго
+      return json(sh, 200, url.searchParams.get('r') ? 'public, durable, s-maxage=31536000, immutable' : 'public, s-maxage=20');
     }
-    if (url.pathname.endsWith('/api/oblys')) {
-      const name = clean(url.searchParams.get('o'), 200);
-      const settings = await getSettings(fresh);
-      if (!isOpen(settings) && !fresh) return respond({ error: 'closed' }, 403, true);
-      const data = await getOblys(name, fresh);
-      if (!data) return respond({ error: 'not found' }, 404, fresh, 30);
-      return respond({ v: Date.now(), ...data }, 200, fresh);
+    if (path === 'react') {
+      const id = clean(method === 'GET' ? url.searchParams.get('id') : '', 80);
+      if (method === 'GET') {
+        if (!/^[\w-]{1,80}$/.test(id)) return json({ c: {} });
+        const st = await store(); const got = await st.get('react/' + id);
+        return new Response(JSON.stringify({ c: got ? got.data : {} }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=0, must-revalidate', 'Netlify-CDN-Cache-Control': 'public, s-maxage=30' } });
+      }
+      if (method === 'POST') {
+        const body = await readBody(req);
+        const rid = clean(body.id, 80);
+        if (!/^[\w-]{1,80}$/.test(rid) || !REACTIONS.includes(body.k)) throw httpErr(400, 'bad');
+        if (!reactRateOk(ipOf(req))) throw httpErr(429, 'rate');
+        const c = await mutate('react/' + rid, (d) => ({ ...d, [body.k]: (d[body.k] || 0) + 1 }), {});
+        return json({ c });
+      }
     }
-    return respond({ error: 'not found' }, 404, true);
+    if (path.startsWith('admin/')) return await admin(req, path.slice(6), method);
+    return json({ error: 'not found' }, 404);
   } catch (e) {
-    const msg = e instanceof SheetError ? e.message : 'Ошибка: ' + (e && e.message);
-    if (!(e instanceof SheetError)) console.error(e);
-    return respond({ error: msg }, 502, true);
+    const status = e.status || 500;
+    if (status === 500) console.error(e);
+    return json({ error: status === 500 ? 'Ошибка сервера: ' + e.message : e.message }, status);
   }
 };
 
-export const config = { path: ['/api/tree', '/api/oblys'] };
+export const config = { path: '/api/*' };
