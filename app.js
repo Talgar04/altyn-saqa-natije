@@ -212,14 +212,15 @@
   }
   let statsDone = false;
   const logos = {};   // загруженные Image для картинки-карточки
-  const assetUrl = (name) => (data && data.assets && data.assets[name] ? `/api/asset/${name}?v=${data.assets[name]}` : '');
+  // логотипы из кабинета; если не загружены — встроенные файлы сайта
+  const BUILTIN = { altyn: '/logo-altyn.png', app: '/logo-app.png', favicon: '/favicon.png' };
+  const assetUrl = (name) => (data && data.assets && data.assets[name] ? `/api/asset/${name}?v=${data.assets[name]}` : BUILTIN[name] || '');
   function applyAssets() {
     const al = assetUrl('altyn'), ap = assetUrl('app'), fav = assetUrl('favicon') || ap;
     const setImg = (img, url, holder, cls) => { if (url) { if (img.getAttribute('src') !== url) img.src = url; img.hidden = false; if (holder) holder.classList.add(cls); } else { img.hidden = true; if (holder) holder.classList.remove(cls); } };
     setImg($('logoAltyn'), al, document.querySelector('.brand'), 'has-logo');
     setImg($('heroLogo'), al, document.querySelector('.hero'), 'has-logo');
     setImg($('logoApp'), ap);
-    $('footApp').hidden = !!ap;
     if (fav) { $('favicon').href = fav; $('touchIcon').href = fav; }
     for (const [k, url] of [['altyn', al], ['app', ap]]) {
       if (url && (!logos[k] || logos[k].url !== url)) { const im = new Image(); im.decoding = 'async'; im.src = url; logos[k] = { url, im }; }
@@ -759,7 +760,14 @@
     content(c);
     c.textAlign = 'center'; c.fillStyle = 'rgba(182,166,230,.8)'; c.font = txt(500, 24);
     const ap = logos.app && logos.app.im.complete && logos.app.im.naturalWidth ? logos.app.im : null;
-    if (ap) { const h = 54, w = Math.min(260, ap.naturalWidth * h / ap.naturalHeight); c.drawImage(ap, W / 2 - w / 2, H - 150, w, w * ap.naturalHeight / ap.naturalWidth); c.fillText(location.host, W / 2, H - 66); }
+    if (ap) {
+      c.font = disp(700, 30); c.fillStyle = '#FFFFFF';
+      const label = 'Zerdeli App'; const tw = c.measureText(label).width; const sz = 56; const gap = 16;
+      const x0 = W / 2 - (sz + gap + tw) / 2;
+      c.save(); rr(c, x0, H - 160, sz, sz, 14); c.clip(); c.drawImage(ap, x0, H - 160, sz, sz); c.restore();
+      c.textAlign = 'left'; c.fillText(label, x0 + sz + gap, H - 121);
+      c.textAlign = 'center'; c.font = txt(500, 24); c.fillStyle = 'rgba(182,166,230,.8)'; c.fillText(location.host, W / 2, H - 66);
+    }
     else c.fillText(location.host + '  ·  Zerdeli App', W / 2, H - 78);
     return new Promise((r) => cv.toBlob(r, 'image/png'));
   }
