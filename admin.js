@@ -608,7 +608,31 @@
         toast('Сохранено — сайт обновится в течение ~20 секунд'); renderShell();
       } catch (e) { toast(e.message, true); } finally { saveBtn.disabled = false; }
     } }, 'Сохранить');
+    const logoBox = (name, label, hint) => {
+      const v = (S.meta.assets || {})[name];
+      const img = h('img', { src: v ? `/api/asset/${name}?v=${v}` : '', style: `max-height:70px;max-width:220px;background:#140B33;border-radius:10px;padding:8px;${v ? '' : 'display:none'}` });
+      const file = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon', hidden: true });
+      const status = h('span', { class: 'note' }, v ? '' : 'не загружен');
+      file.addEventListener('change', () => {
+        const f = file.files[0]; if (!f) return;
+        if (f.size > 1500000) { toast('Картинка больше 1,5 МБ — уменьшите её', true); return; }
+        const rd = new FileReader();
+        rd.onload = async () => {
+          try { const d = await api('asset', { method: 'POST', body: { name, dataUrl: rd.result } }); S.meta.assets = { ...(S.meta.assets || {}), [name]: d.v }; img.src = `/api/asset/${name}?v=${d.v}`; img.style.display = ''; status.textContent = 'загружен'; toast('Логотип загружен — появится на сайте через ~20 секунд'); }
+          catch (e) { toast(e.message, true); }
+        };
+        rd.readAsDataURL(f); file.value = '';
+      });
+      return h('div', { class: 'colbox' }, h('h3', null, label), h('p', { class: 'note', style: 'margin:0 0 8px' }, hint),
+        h('div', { class: 'row' }, img, h('button', { class: 'btn', type: 'button', onclick: () => file.click() }, v ? 'Заменить' : 'Загрузить'),
+          v ? h('button', { class: 'btn danger', type: 'button', onclick: async () => { if (!confirm('Убрать логотип?')) return; try { await api('asset', { method: 'POST', body: { name, dataUrl: null } }); const a = { ...(S.meta.assets || {}) }; delete a[name]; S.meta.assets = a; renderShell(); } catch (e) { toast(e.message, true); } } }, 'Убрать') : null, status, file));
+    };
     body.append(
+      h('div', { class: 'card' }, h('h2', null, 'Логотипы'),
+        h('p', { class: 'sub' }, 'Лучше PNG с прозрачным фоном или SVG, до 1,5 МБ. Сохраняются сразу, отдельная кнопка «Сохранить» не нужна.'),
+        logoBox('altyn', 'Логотип «Алтын сақа»', 'В шапке сайта, на главной вместо эмблемы и на картинке результата. Светлый логотип — фон сайта тёмный.'),
+        logoBox('app', 'Логотип Zerdeli App', 'Внизу сайта и на картинке результата.'),
+        logoBox('favicon', 'Иконка вкладки (favicon)', 'Квадратная картинка, например значок Zerdeli App. Если не загружена — берётся логотип Zerdeli App.')),
       h('div', { class: 'card' }, h('h2', null, 'Публикация'), modeBox, h('div', { style: 'margin-top:12px' }, bi(s, 'closedText', 'Текст, пока результаты скрыты', { area: true, rows: 60 }))),
       h('div', { class: 'card' }, h('h2', null, 'Главная страница'),
         bi(s, 'title', 'Название'), bi(s, 'subtitle', 'Строка над названием'), bi(s, 'stage', 'Этап (плашка)'), bi(s, 'heroText', 'Текст под названием', { area: true, rows: 60 }),
@@ -621,6 +645,9 @@
         h('h3', null, 'Прошёл в следующий этап'), bi(s.letters.yes, 'title', 'Заголовок'), bi(s.letters.yes, 'body', 'Письмо', { area: true, rows: 200 }),
         h('h3', null, 'Не прошёл'), bi(s.letters.no, 'title', 'Заголовок'), bi(s.letters.no, 'body', 'Письмо', { area: true, rows: 200 }),
         h('h3', null, 'Статус пока не известен'), bi(s.letters.pending, 'title', 'Заголовок'), bi(s.letters.pending, 'body', 'Письмо', { area: true, rows: 80 }),
+        h('h3', null, 'Сообщение для кнопки «Поделиться в WhatsApp»'),
+        h('p', { class: 'note' }, '{name} — ФИО, {score} — жалпы балл, {school} — мектеп, {url} — ссылка на страницу ребёнка. Отправляется вместе с картинкой.'),
+        bi(s.shareText, 'yes', 'Прошёл', { area: true, rows: 70 }), bi(s.shareText, 'no', 'Не прошёл', { area: true, rows: 70 }),
         h('div', { class: 'row' }, check(s, 'reactions', 'Реакции (🤲 👏 ❤️ 🔥 💪)'), check(s, 'confetti', 'Салют для прошедших'), check(s, 'download', 'Кнопка «Сохранить картинку»'))),
       h('div', { class: 'card' }, h('h2', null, 'Баллы и статус'),
         ...['b1', 'b2', 'b3'].map((k, i) => h('div', { class: 'colbox' }, h('h3', null, check(s.show, k, 'Показывать'), ` Балл ${i + 1}`), bi(s.labels, k, 'Название'), maxIn(k))),

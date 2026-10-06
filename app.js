@@ -23,8 +23,9 @@
       reactTitleYes: 'Балаңызға тілегіңізді білдіріңіз', reactTitleNo: 'Балаңызды қолдап жіберіңіз',
       r_pray: 'Сәттілік!', r_clap: 'Жарайсың!', r_heart: 'Мақтанамыз', r_fire: 'Алға!', r_strong: 'Келесі жолы!',
       sign: 'Құрметпен, «{title}» олимпиадасының ұйымдастырушылары',
-      save: 'Суретті сақтау', share: 'Бөлісу', copied: 'Сілтеме көшірілді', saved: 'Сурет сақталды', shareFail: 'Сілтемені көшіру мүмкін болмады',
+      save: 'Суретті сақтау', share: 'WhatsApp-та бөлісу', copied: 'Сілтеме көшірілді', saved: 'Сурет сақталды', shareFail: 'Сілтемені көшіру мүмкін болмады',
       call: 'Қоңырау шалу', whatsapp: 'WhatsApp-қа жазу', footCall: 'Дайындық курсы:',
+      preparing: 'Сурет дайындалуда…', shareDesktop: 'Сурет сақталды, мәтін көшірілді — WhatsApp-та суретті тіркеп, мәтінді қойыңыз',
       days: 'күн', hours: 'сағат', mins: 'минут', secs: 'секунд', of: '/',
       waText: 'Сәлеметсіз бе! Аудандық кезеңге дайындық курсы туралы білгім келеді.',
     },
@@ -46,8 +47,9 @@
       reactTitleYes: 'Поддержите ребёнка своим пожеланием', reactTitleNo: 'Поддержите своего ребёнка',
       r_pray: 'Удачи!', r_clap: 'Молодец!', r_heart: 'Гордимся', r_fire: 'Вперёд!', r_strong: 'В следующий раз!',
       sign: 'С уважением, организаторы олимпиады «{title}»',
-      save: 'Сохранить картинку', share: 'Поделиться', copied: 'Ссылка скопирована', saved: 'Картинка сохранена', shareFail: 'Не удалось скопировать ссылку',
+      save: 'Сохранить картинку', share: 'Поделиться в WhatsApp', copied: 'Ссылка скопирована', saved: 'Картинка сохранена', shareFail: 'Не удалось скопировать ссылку',
       call: 'Позвонить', whatsapp: 'Написать в WhatsApp', footCall: 'Курс подготовки:',
+      preparing: 'Готовим картинку…', shareDesktop: 'Картинка сохранена, текст скопирован — прикрепите картинку в WhatsApp и вставьте текст',
       days: 'дн', hours: 'ч', mins: 'мин', secs: 'сек', of: '/',
       waText: 'Здравствуйте! Хочу узнать о курсе подготовки к районному этапу.',
     },
@@ -71,6 +73,7 @@
   const fmt = (n) => (n === null || n === undefined ? '—' : (Math.round(n * 100) / 100).toLocaleString(lang === 'ru' ? 'ru-RU' : 'kk-KZ'));
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const phoneDigits = (p) => { let d = String(p || '').replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); if (d.length === 10) d = '7' + d; return d; };
+  const waLink = (p) => `https://wa.me/${phoneDigits(p)}?text=${encodeURIComponent(t('waText'))}`;
   const phonePretty = (p) => { const d = phoneDigits(p); return d.length === 11 ? `8 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9)}` : p; };
 
   /* ================================================================ state */
@@ -205,11 +208,27 @@
     document.querySelectorAll('[data-t-aria]').forEach((n) => n.setAttribute('aria-label', t(n.dataset.tAria)));
     document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
     $('sheetSearch').placeholder = t('search');
-    $('year').textContent = new Date().getFullYear() + ' Zerdeli Group';
+    $('year').textContent = new Date().getFullYear() + ' Zerdeli App';
   }
   let statsDone = false;
+  const logos = {};   // загруженные Image для картинки-карточки
+  const assetUrl = (name) => (data && data.assets && data.assets[name] ? `/api/asset/${name}?v=${data.assets[name]}` : '');
+  function applyAssets() {
+    const al = assetUrl('altyn'), ap = assetUrl('app'), fav = assetUrl('favicon') || ap;
+    const setImg = (img, url, holder, cls) => { if (url) { if (img.getAttribute('src') !== url) img.src = url; img.hidden = false; if (holder) holder.classList.add(cls); } else { img.hidden = true; if (holder) holder.classList.remove(cls); } };
+    setImg($('logoAltyn'), al, document.querySelector('.brand'), 'has-logo');
+    setImg($('heroLogo'), al, document.querySelector('.hero'), 'has-logo');
+    setImg($('logoApp'), ap);
+    $('footApp').hidden = !!ap;
+    if (fav) { $('favicon').href = fav; $('touchIcon').href = fav; }
+    for (const [k, url] of [['altyn', al], ['app', ap]]) {
+      if (url && (!logos[k] || logos[k].url !== url)) { const im = new Image(); im.decoding = 'async'; im.src = url; logos[k] = { url, im }; }
+      if (!url) delete logos[k];
+    }
+  }
   function renderHeader() {
     const s = data.settings;
+    applyAssets();
     $('title').textContent = pickL(s.title);
     $('brandName').textContent = pickL(s.title);
     $('footTitle').textContent = pickL(s.title);
@@ -224,7 +243,7 @@
     const fp = $('footPhone');
     if (p.show && p.phone) {
       fp.hidden = false; fp.replaceChildren(t('footCall') + ' ');
-      const a = el('a', '', phonePretty(p.phone)); a.href = 'tel:+' + phoneDigits(p.phone); fp.append(a);
+      const a = el('a', '', phonePretty(p.phone)); a.href = waLink(p.phone); a.target = '_blank'; a.rel = 'noopener'; fp.append(a);
     } else fp.hidden = true;
     const st = $('stats');
     st.hidden = !(s.show.stats && data.stats && data.stats.students);
@@ -245,17 +264,14 @@
     if (pickL(p.badge)) inn.append(el('span', 'promo-badge', pickL(p.badge)));
     inn.append(el('h2', '', pickL(p.title)));
     if (pickL(p.text)) inn.append(el('p', '', pickL(p.text)));
-    const ph = el('a', 'promo-phone'); ph.href = 'tel:+' + phoneDigits(p.phone);
-    ph.innerHTML = '<i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.2 15.2 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z" fill="currentColor"/></svg></i>';
+    const ph = el('a', 'promo-phone'); ph.href = waLink(p.phone); ph.target = '_blank'; ph.rel = 'noopener';
+    ph.innerHTML = '<i class="wa-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0012.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.35-.5.05-.98.24-3.3-.69-2.79-1.1-4.56-3.95-4.7-4.13-.14-.18-1.12-1.49-1.12-2.85 0-1.35.71-2.02.96-2.29.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.7 1.16 1.51 1.88 1.04.93 1.92 1.21 2.19 1.35.27.14.43.12.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.34z"/></svg></i>';
     ph.append(phonePretty(p.phone));
     inn.append(ph);
     const act = el('div', 'promo-actions');
-    const call = el('a', 'btn gold', t('call')); call.href = 'tel:+' + phoneDigits(p.phone); act.append(call);
-    if (p.whatsapp) {
-      const wa = el('a', 'btn wa', t('whatsapp'));
-      wa.href = `https://wa.me/${phoneDigits(p.phone)}?text=${encodeURIComponent(t('waText'))}`; wa.target = '_blank'; wa.rel = 'noopener';
-      act.append(wa);
-    }
+    const wa = el('a', 'btn wa'); wa.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0012.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.35-.5.05-.98.24-3.3-.69-2.79-1.1-4.56-3.95-4.7-4.13-.14-.18-1.12-1.49-1.12-2.85 0-1.35.71-2.02.96-2.29.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.7 1.16 1.51 1.88 1.04.93 1.92 1.21 2.19 1.35.27.14.43.12.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.34z"/></svg>'; wa.append(el('span', '', t('whatsapp')));
+    wa.href = waLink(p.phone); wa.target = '_blank'; wa.rel = 'noopener';
+    act.append(wa);
     inn.append(act);
     wrap.append(inn);
     return wrap;
@@ -541,7 +557,7 @@
     // действия
     const act = el('div', 'kid-actions');
     if (s.download) { const b = el('button', 'btn ghost'); b.type = 'button'; b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0l-4-4m4 4l4-4M4 15h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; b.append(el('span', '', t('save'))); b.addEventListener('click', () => saveImage(b)); act.append(b); }
-    const sb = el('button', 'btn ghost'); sb.type = 'button'; sb.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 11.5l5-3m-5 0l5 3M15 5.5a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0zm8 4.5a2 2 0 11-4 0 2 2 0 014 0z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'; sb.append(el('span', '', t('share'))); sb.addEventListener('click', share); act.append(sb);
+    const sb = el('button', 'btn wa'); sb.type = 'button'; sb.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0012.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.35-.5.05-.98.24-3.3-.69-2.79-1.1-4.56-3.95-4.7-4.13-.14-.18-1.12-1.49-1.12-2.85 0-1.35.71-2.02.96-2.29.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.7 1.16 1.51 1.88 1.04.93 1.92 1.21 2.19 1.35.27.14.43.12.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.34z"/></svg>'; sb.append(el('span', '', t('share'))); sb.addEventListener('click', () => share(sb)); act.prepend(sb);
     out.push(act);
     const p = s.promo;
     if (p.show && p.phone && (p.onChild === 'all' || (p.onChild === 'passed' && kind === 'yes'))) { const pn = promoNode(); pn.removeAttribute('id'); out.push(pn); }
@@ -629,15 +645,42 @@
   /* ================================================================ toast, share */
   let toastTimer = 0;
   function toast(msg) { const n = $('toast'); n.textContent = msg; n.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { n.hidden = true; }, 2600); }
-  async function share() {
-    const url = location.href;
-    const title = current ? `${current.n} — ${pickL(data.settings.title)}` : document.title;
-    if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { try { await navigator.share({ title, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-    try { await navigator.clipboard.writeText(url); toast(t('copied')); }
+  function shareMessage() {
+    const x = current; const kind = statusOf(x);
+    const tpl = pickL(data.settings.shareText[kind === 'absent' ? 'pending' : kind]) || '{name}\n{url}';
+    return tpl.replace(/\{name\}/g, x.n).replace(/\{score\}/g, fmt(x.t)).replace(/\{school\}/g, x.s).replace(/\{url\}/g, location.href);
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
     catch (e) {
-      const ta = el('textarea'); ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.append(ta); ta.select();
-      let ok = false; try { ok = document.execCommand('copy'); } catch (er) { ok = false; } ta.remove(); toast(ok ? t('copied') : t('shareFail'));
+      const ta = el('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.append(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch (er) { ok = false; } ta.remove(); return ok;
     }
+  }
+  // картинка + поздравительный текст: на телефоне сразу открывает выбор WhatsApp
+  async function share(btn) {
+    if (!current || (btn && btn.disabled)) return;
+    if (btn) btn.disabled = true;
+    const text = shareMessage();
+    try {
+      let file = null;
+      if (data.settings.download !== false) {
+        toast(t('preparing'));
+        const blob = await drawCard();
+        if (blob) file = new File([blob], `${current.n}`.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.png', { type: 'image/png' });
+      }
+      if (navigator.share) {
+        const payload = file && navigator.canShare && navigator.canShare({ files: [file] }) ? { files: [file], text } : { text };
+        try { await navigator.share(payload); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      // компьютер: скачиваем картинку, копируем текст и открываем WhatsApp с текстом
+      if (file) { const url = URL.createObjectURL(file); const a = el('a'); a.href = url; a.download = file.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
+      await copyText(text);
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+      toast(t('shareDesktop'));
+    } catch (e) { toast(t('shareFail')); }
+    finally { if (btn) btn.disabled = false; }
   }
 
   /* ================================================================ image card */
@@ -653,15 +696,23 @@
     const accent = gold ? '#F2C94C' : '#B6A6E6';
     function content(c) {
       c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-      c.fillStyle = '#B6A6E6'; c.font = txt(500, 30); c.fillText(pickL(s.subtitle), W / 2, 140, W - 180);
-      c.font = disp(900, 80); c.fillStyle = gold ? '#FFE7A3' : '#FFFFFF';
-      let y = 236; clampLines(c, pickL(s.title).toUpperCase(), W - 180, 2).forEach((l) => { c.fillText(l, W / 2, y, W - 180); y += 88; });
+      let y = 140;
+      const al = logos.altyn && logos.altyn.im.complete && logos.altyn.im.naturalWidth ? logos.altyn.im : null;
+      if (al) {
+        const h = 150, w = Math.min(560, al.naturalWidth * h / al.naturalHeight); const hh = w * al.naturalHeight / al.naturalWidth;
+        c.drawImage(al, W / 2 - w / 2, 90, w, hh); y = 90 + hh + 50;
+        c.fillStyle = '#B6A6E6'; c.font = txt(500, 30); c.fillText(pickL(s.subtitle), W / 2, y, W - 180); y += 78;
+      } else {
+        c.fillStyle = '#B6A6E6'; c.font = txt(500, 30); c.fillText(pickL(s.subtitle), W / 2, 140, W - 180);
+        c.font = disp(900, 80); c.fillStyle = gold ? '#FFE7A3' : '#FFFFFF';
+        y = 236; clampLines(c, pickL(s.title).toUpperCase(), W - 180, 2).forEach((l) => { c.fillText(l, W / 2, y, W - 180); y += 88; });
+      }
       const stg = pickL(s.stage);
       if (stg) { c.font = txt(600, 28); const w = Math.min(W - 200, c.measureText(stg).width + 48); c.strokeStyle = accent; c.lineWidth = 2; rr(c, W / 2 - w / 2, y - 30, w, 52, 26); c.stroke(); c.fillStyle = accent; c.fillText(stg, W / 2, y + 5, w - 30); y += 80; }
       const rib = t(kind === 'yes' ? 'ribbonYes' : kind === 'no' ? 'ribbonNo' : 'ribbonPending').toUpperCase();
       c.font = disp(900, 34); const rw = Math.min(W - 160, c.measureText(rib).width + 80);
       c.fillStyle = gold ? '#F2C94C' : 'rgba(182,166,230,.18)'; rr(c, W / 2 - rw / 2, y, rw, 70, 35); c.fill();
-      c.fillStyle = gold ? '#2A1A00' : '#FFFFFF'; c.fillText(rib, W / 2, y + 47, rw - 40); y += 130;
+      c.fillStyle = gold ? '#2A1A00' : '#FFFFFF'; c.fillText(rib, W / 2, y + 47, rw - 40); y += 150;
       c.fillStyle = '#FFFFFF'; c.font = disp(900, 58);
       clampLines(c, x.n, W - 180, 2).forEach((l) => { c.fillText(l, W / 2, y); y += 70; });
       c.fillStyle = '#B6A6E6'; c.font = txt(500, 28);
@@ -696,7 +747,7 @@
       return y;
     }
     const probe = document.createElement('canvas').getContext('2d');
-    const H = Math.max(1350, Math.ceil(content(probe) + 150));
+    const H = Math.max(1350, Math.ceil(content(probe) + 230));
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const c = cv.getContext('2d');
     let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, gold ? '#2E1A63' : '#24135F'); g.addColorStop(1, '#0D0724'); c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -706,7 +757,10 @@
     c.globalAlpha = 1;
     c.strokeStyle = gold ? 'rgba(242,201,76,.7)' : 'rgba(182,166,230,.45)'; c.lineWidth = 3; rr(c, 40, 40, W - 80, H - 80, 44); c.stroke();
     content(c);
-    c.textAlign = 'center'; c.fillStyle = 'rgba(182,166,230,.8)'; c.font = txt(500, 24); c.fillText(location.host + '  ·  Zerdeli Group', W / 2, H - 78);
+    c.textAlign = 'center'; c.fillStyle = 'rgba(182,166,230,.8)'; c.font = txt(500, 24);
+    const ap = logos.app && logos.app.im.complete && logos.app.im.naturalWidth ? logos.app.im : null;
+    if (ap) { const h = 54, w = Math.min(260, ap.naturalWidth * h / ap.naturalHeight); c.drawImage(ap, W / 2 - w / 2, H - 150, w, w * ap.naturalHeight / ap.naturalWidth); c.fillText(location.host, W / 2, H - 66); }
+    else c.fillText(location.host + '  ·  Zerdeli App', W / 2, H - 78);
     return new Promise((r) => cv.toBlob(r, 'image/png'));
   }
   async function saveImage(btn) {

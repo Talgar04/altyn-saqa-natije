@@ -420,3 +420,14 @@ main { position: relative; z-index: 2; max-width: 720px; margin: 0 auto; padding
   .letter p { font-size: 15.5px; }
   #child { padding: 0 12px 30px; }
 }
+
+/* логотипы */
+.brand-logo { height: 38px; width: auto; max-width: 180px; object-fit: contain; display: block; }
+.brand.has-logo svg, .brand.has-logo #brandName { display: none; }
+.hero-logo { display: block; margin: 0 auto 10px; max-width: min(300px, 72vw); max-height: 170px; width: auto; height: auto; object-fit: contain; filter: drop-shadow(0 10px 40px rgba(242, 201, 76, .35)); animation: rise .9s .05s var(--ease) both; }
+.hero.has-logo .crest { display: none; }
+.foot-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.foot-logo { height: 30px; width: auto; max-width: 140px; object-fit: contain; }
+.promo-phone i.wa-i { background: #25D366; color: #fff; box-shadow: 0 0 0 6px rgba(37, 211, 102, .15); }
+.promo-actions .btn.wa { flex: 1 1 100%; font-size: 16px; min-height: 52px; }
+.btn.wa svg { width: 22px; height: 22px; }
