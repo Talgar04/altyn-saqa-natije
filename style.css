@@ -1,0 +1,64 @@
+// Хранилище: Netlify Blobs в продакшене, папка на диске для локальных тестов (BLOBS_DIR).
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+
+function fsStore(dir) {
+  const file = (k) => path.join(dir, encodeURIComponent(k));
+  const etagOf = (buf) => '"' + crypto.createHash('sha1').update(buf).digest('hex') + '"';
+  return {
+    async get(key) {
+      try { const buf = await fs.readFile(file(key)); return { data: JSON.parse(buf.toString('utf8')), etag: etagOf(buf) }; }
+      catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+    },
+    async set(key, data, opts = {}) {
+      await fs.mkdir(dir, { recursive: true });
+      const cur = await this.get(key);
+      if (opts.onlyIfNew && cur) return { modified: false };
+      if (opts.onlyIfMatch && (!cur || cur.etag !== opts.onlyIfMatch)) return { modified: false };
+      const buf = Buffer.from(JSON.stringify(data));
+      const tmp = file(key) + '.' + process.pid + '.tmp';
+      await fs.writeFile(tmp, buf); await fs.rename(tmp, file(key));
+      return { modified: true, etag: etagOf(buf) };
+    },
+    async exists(key) { try { await fs.access(file(key)); return true; } catch { return false; } },
+    async del(key) { await fs.rm(file(key), { force: true }); },
+    async keys(prefix) {
+      try { return (await fs.readdir(dir)).map(decodeURIComponent).filter((k) => k.startsWith(prefix) && !k.endsWith('.tmp')); }
+      catch { return []; }
+    },
+  };
+}
+
+async function blobStore() {
+  const { getStore } = await import('@netlify/blobs');
+  const s = getStore({ name: 'altyn-saqa', consistency: 'strong' });
+  return {
+    async get(key) {
+      const r = await s.getWithMetadata(key, { type: 'json', consistency: 'strong' });
+      return r ? { data: r.data, etag: r.etag } : null;
+    },
+    async set(key, data, opts = {}) {
+      const o = {};
+      if (opts.onlyIfMatch) o.onlyIfMatch = opts.onlyIfMatch;
+      else if (opts.onlyIfNew) o.onlyIfNew = true;
+      const r = await s.setJSON(key, data, o);
+      return r && typeof r.modified === 'boolean' ? r : { modified: true };
+    },
+    async exists(key) { return !!(await s.getMetadata(key, { consistency: 'strong' })); },
+    async del(key) { await s.delete(key); },
+    async keys(prefix) { const { blobs } = await s.list({ prefix }); return blobs.map((b) => b.key); },
+  };
+}
+
+let cached;
+export async function store() {
+  if (!cached) cached = process.env.BLOBS_DIR ? fsStore(process.env.BLOBS_DIR) : await blobStore();
+  return cached;
+}
+
+export async function purge() {
+  if (process.env.BLOBS_DIR) return;
+  try { const { purgeCache } = await import('@netlify/functions'); await purgeCache({ tags: ['site'] }); }
+  catch (e) { console.error('purgeCache:', e && e.message); }
+}

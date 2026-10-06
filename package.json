@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120A2E">
+<meta name="description" content="«Алтын сақа» олимпиадасы — мектепішілік кезең нәтижелері">
+<title>Алтын сақа — нәтижелер</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700;900&display=swap&subset=cyrillic-ext">
+<link rel="preload" href="/api/site" as="fetch" crossorigin="anonymous">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="bgfx" aria-hidden="true"></div>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="beam" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div id="announce" class="announce" hidden></div>
+
+<header class="top">
+  <a class="brand" href="/" data-home>
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2l4.6 6.2 7.7-.9.9 7.7L39 20l-5.8 5 -.9 7.7-7.7-.9L20 38l-4.6-6.2-7.7.9-.9-7.7L1 20l5.8-5 .9-7.7 7.7.9z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 14h12l-12 12h12" fill="none" stroke="#F2C94C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="brandName">Алтын сақа</span>
+  </a>
+  <nav class="nav">
+    <a href="/#finder" data-nav="finder" data-t="navResults"></a>
+    <a href="/#promo" data-nav="promo" id="navPromo" data-t="navPromo"></a>
+  </nav>
+  <div class="lang" role="group" aria-label="Тіл / Язык">
+    <button type="button" data-lang="kk" aria-pressed="true">Қаз</button>
+    <button type="button" data-lang="ru" aria-pressed="false">Рус</button>
+  </div>
+</header>
+
+<main id="home">
+  <section class="hero">
+        <svg class="crest" viewBox="0 0 240 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7645C1"/><stop offset="1" stop-color="#E9DDFF"/></linearGradient>
+        <radialGradient id="medal" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#3A2296"/><stop offset="1" stop-color="#140B33"/></radialGradient>
+        <g id="lf"><path d="M0 0c5-5.5 14-6 20 0-6 6-15 5.5-20 0z" fill="url(#leaf)"/></g>
+      </defs>
+      <g class="laurel l">
+        <path d="M111.9 135.4 L108.6 134.9 L105.4 134.1 L102.2 133.2 L99.0 132.1 L95.9 130.8 L92.9 129.3 L90.0 127.7 L87.2 125.9 L84.5 123.9 L81.9 121.8 L79.5 119.5 L77.2 117.1 L75.0 114.6 L73.0 111.9 L71.1 109.2 L69.4 106.3 L67.8 103.3 L66.5 100.3 L65.3 97.2 L64.2 94.0 L63.4 90.8 L62.8 87.5 L62.3 84.2 L62.1 80.8 L62.0 77.5 L62.1 74.2 L62.4 70.8 L63.0 67.5 L63.7 64.3 L64.5 61.0 L65.6 57.9 L66.9 54.8 L68.3 51.8 L69.9 48.8 L71.6 46.0 L73.6 43.3 L75.6 40.6 L77.9 38.1 L80.2 35.8 L82.7 33.6" fill="none" stroke="#9C7BE0" stroke-width="1.6" stroke-linecap="round"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-204.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-128.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-190.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-114.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-176.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-100.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-162.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-86.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-148.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-72.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-134.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-58.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-120.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-44.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-106.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-30.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-92.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-16.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(82.7 33.6) rotate(-40.0) scale(.7)"/>
+      </g>
+      <g class="laurel r" transform="translate(240 0) scale(-1 1)">
+        <path d="M111.9 135.4 L108.6 134.9 L105.4 134.1 L102.2 133.2 L99.0 132.1 L95.9 130.8 L92.9 129.3 L90.0 127.7 L87.2 125.9 L84.5 123.9 L81.9 121.8 L79.5 119.5 L77.2 117.1 L75.0 114.6 L73.0 111.9 L71.1 109.2 L69.4 106.3 L67.8 103.3 L66.5 100.3 L65.3 97.2 L64.2 94.0 L63.4 90.8 L62.8 87.5 L62.3 84.2 L62.1 80.8 L62.0 77.5 L62.1 74.2 L62.4 70.8 L63.0 67.5 L63.7 64.3 L64.5 61.0 L65.6 57.9 L66.9 54.8 L68.3 51.8 L69.9 48.8 L71.6 46.0 L73.6 43.3 L75.6 40.6 L77.9 38.1 L80.2 35.8 L82.7 33.6" fill="none" stroke="#9C7BE0" stroke-width="1.6" stroke-linecap="round"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-204.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(106.0 134.3) rotate(-128.0) scale(1.00)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-190.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(92.8 129.2) rotate(-114.0) scale(0.95)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-176.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(81.2 121.1) rotate(-100.0) scale(0.91)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-162.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(71.9 110.4) rotate(-86.0) scale(0.86)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-148.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(65.5 97.8) rotate(-72.0) scale(0.82)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-134.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.3 84.1) rotate(-58.0) scale(0.78)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-120.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(62.6 69.9) rotate(-44.0) scale(0.73)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-106.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(66.2 56.3) rotate(-30.0) scale(0.69)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-92.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(73.1 43.9) rotate(-16.0) scale(0.64)"/>
+        <use href="#lf" transform="translate(82.7 33.6) rotate(-40.0) scale(.7)"/>
+      </g>
+      <g class="star">
+        <circle cx="120" cy="78" r="38" fill="url(#medal)" stroke="#F2C94C" stroke-width="1.5"/>
+        <circle cx="120" cy="78" r="31" fill="none" stroke="#7645C1" stroke-width="1" stroke-dasharray="1.5 3.5"/>
+        <path d="M108 66h24l-24 24h24" fill="none" stroke="#F2C94C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M120 22l2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" fill="#F2C94C"/>
+      </g>
+    </svg>
+
+    <p class="subtitle" id="subtitle"></p>
+    <h1 class="title" id="title"></h1>
+    <p class="stage" id="stage"></p>
+    <p class="hero-text" id="heroText"></p>
+    <div class="stats" id="stats" hidden>
+      <div><b data-count id="stStudents">0</b><span data-t="statStudents"></span></div>
+      <div><b data-count id="stSchools">0</b><span data-t="statSchools"></span></div>
+      <div><b data-count id="stOblys">0</b><span data-t="statOblys"></span></div>
+    </div>
+    <a class="btn cta" href="#finder" data-nav="finder"><span data-t="ctaFind"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12m0 0l-5-5m5 5l5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  </section>
+
+  <section class="panel" id="finder" aria-live="polite">
+    <div class="panel-loading" id="loading"><span class="spinner" aria-hidden="true"></span><span data-t="loading"></span></div>
+    <div class="panel-error" id="error" hidden><p data-t="loadError"></p><button type="button" class="btn" id="retry" data-t="retry"></button></div>
+    <div class="closed" id="closed" hidden><p class="closed-text" id="closedText"></p><div class="countdown" id="countdown" hidden></div></div>
+
+    <form class="steps" id="steps" hidden onsubmit="return false">
+      <h2 class="panel-title" data-t="finderTitle"></h2>
+      <ol>
+        <li class="step" data-step="o"><span class="num" aria-hidden="true">1</span><div class="step-body"><span class="step-label" id="lbl-o" data-t="oblys"></span>
+          <button type="button" class="pick" data-field="o" aria-haspopup="dialog" aria-labelledby="lbl-o val-o"><span class="pick-val" id="val-o"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></li>
+        <li class="step" data-step="a"><span class="num" aria-hidden="true">2</span><div class="step-body"><span class="step-label" id="lbl-a" data-t="audan"></span>
+          <button type="button" class="pick" data-field="a" aria-haspopup="dialog" aria-labelledby="lbl-a val-a"><span class="pick-val" id="val-a"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></li>
+        <li class="step" data-step="s"><span class="num" aria-hidden="true">3</span><div class="step-body"><span class="step-label" id="lbl-s" data-t="school"></span>
+          <button type="button" class="pick" data-field="s" aria-haspopup="dialog" aria-labelledby="lbl-s val-s"><span class="pick-val" id="val-s"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></li>
+        <li class="step" data-step="c"><span class="num" aria-hidden="true">4</span><div class="step-body"><span class="step-label" id="lbl-c" data-t="klass"></span>
+          <div class="chips" id="chips" role="radiogroup" aria-labelledby="lbl-c"></div></div></li>
+      </ol>
+    </form>
+
+    <div class="classview" id="classView" hidden>
+      <h3 class="cls-title" id="clsTitle"></h3>
+      <p class="cls-hint" data-t="tapChild"></p>
+      <ul class="roster" id="roster"></ul>
+      <div class="cls-msg" id="clsMsg" hidden><p id="clsMsgText"></p><button type="button" class="btn ghost" id="clsRetry" data-t="retry"></button></div>
+    </div>
+  </section>
+
+  <section class="promo" id="promo" hidden></section>
+</main>
+
+<main id="child" hidden>
+  <a class="back" href="/" id="backLink"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="back"></span></a>
+  <div id="childBody"></div>
+</main>
+
+<footer class="foot">
+  <p class="foot-brand">«<span id="footTitle">Алтын сақа</span>» · Zerdeli Group</p>
+  <p class="foot-phone" id="footPhone" hidden></p>
+  <p>© <span id="year"></span></p>
+</footer>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head"><h3 id="sheetTitle"></h3><button type="button" class="x" data-close data-t-aria="close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+    <div class="search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="search" id="sheetSearch" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-controls="sheetList"></div>
+    <ul class="sheet-list" id="sheetList" role="listbox"></ul>
+    <p class="sheet-none" id="sheetNone" hidden data-t="nothing"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<script src="/app.js" defer></script>
+</body>
+</html>
