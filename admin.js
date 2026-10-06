@@ -1,808 +1,648 @@
 (() => {
   'use strict';
-  const $ = (id) => document.getElementById(id);
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  /* ================================================================ i18n */
-  const T = {
-    kk: {
-      loading: 'Нәтижелер жүктелуде…', loadError: 'Нәтижелер жүктелмеді. Интернетті тексеріп, қайталап көріңіз.', retry: 'Қайталау',
-      navResults: 'Нәтижелер', navPromo: 'Дайындық курсы', ctaFind: 'Нәтижені көру',
-      statStudents: 'қатысушы', statSchools: 'мектеп', statOblys: 'өңір',
-      finderTitle: 'Баланың нәтижесін табу',
-      oblys: 'Облыс', audan: 'Аудан', school: 'Мектеп', klass: 'Сынып',
-      pickO: 'Облысты таңдаңыз', pickA: 'Ауданды таңдаңыз', pickS: 'Мектепті таңдаңыз', pickFirst: 'Алдымен мектепті таңдаңыз',
-      search: 'Іздеу', nothing: 'Ештеңе табылмады', close: 'Жабу',
-      tapChild: 'Балаңыздың атын басыңыз — оның жеке парағы ашылады.',
-      classFull: (g, l) => (l ? `${g} «${l}» сынып` : `${g}-сынып`), classShort: (g, l) => (l ? `${g} «${l}»` : `${g}-сынып`),
-      placeN: (r) => `${r} орын`, teacher: 'Мұғалімі', absentShort: 'қатыспады',
-      absentTitle: 'Олимпиадаға қатыспады', absentText: 'Бұл оқушы мектепішілік кезеңге қатыспаған.',
-      classErr: 'Сынып тізімі жүктелмеді. Қайталап көріңіз.', notFound: 'Оқушы табылмады. Сілтемені тексеріңіз немесе тізімнен қайта таңдаңыз.',
-      back: 'Сынып тізіміне оралу', backHome: 'Басты бетке',
-      ribbonYes: 'Келесі кезеңге өтті!', ribbonNo: 'Жарайсың!', ribbonPending: 'Нәтиже дайын',
-      reactTitleYes: 'Балаңызға тілегіңізді білдіріңіз', reactTitleNo: 'Балаңызды қолдап жіберіңіз',
-      r_pray: 'Сәттілік!', r_clap: 'Жарайсың!', r_heart: 'Мақтанамыз', r_fire: 'Алға!', r_strong: 'Келесі жолы!',
-      sign: 'Құрметпен, «{title}» олимпиадасының ұйымдастырушылары',
-      save: 'Суретті сақтау', share: 'Бөлісу', copied: 'Сілтеме көшірілді', saved: 'Сурет сақталды', shareFail: 'Сілтемені көшіру мүмкін болмады',
-      call: 'Қоңырау шалу', whatsapp: 'WhatsApp-қа жазу', footCall: 'Дайындық курсы:',
-      days: 'күн', hours: 'сағат', mins: 'минут', secs: 'секунд', of: '/',
-      waText: 'Сәлеметсіз бе! Аудандық кезеңге дайындық курсы туралы білгім келеді.',
-    },
-    ru: {
-      loading: 'Загружаем результаты…', loadError: 'Не удалось загрузить результаты. Проверьте интернет и попробуйте ещё раз.', retry: 'Повторить',
-      navResults: 'Результаты', navPromo: 'Курс подготовки', ctaFind: 'Посмотреть результат',
-      statStudents: 'участников', statSchools: 'школ', statOblys: 'регионов',
-      finderTitle: 'Найти результат ребёнка',
-      oblys: 'Область', audan: 'Район', school: 'Школа', klass: 'Класс',
-      pickO: 'Выберите область', pickA: 'Выберите район', pickS: 'Выберите школу', pickFirst: 'Сначала выберите школу',
-      search: 'Поиск', nothing: 'Ничего не найдено', close: 'Закрыть',
-      tapChild: 'Нажмите на имя ребёнка — откроется его личная страница.',
-      classFull: (g, l) => (l ? `${g} «${l}» класс` : `${g} класс`), classShort: (g, l) => (l ? `${g} «${l}»` : `${g} класс`),
-      placeN: (r) => `${r} место`, teacher: 'Учитель', absentShort: 'не участв.',
-      absentTitle: 'Не участвовал(а) в олимпиаде', absentText: 'Этот ученик не принимал участие в школьном этапе.',
-      classErr: 'Не удалось загрузить список класса. Попробуйте ещё раз.', notFound: 'Ученик не найден. Проверьте ссылку или выберите заново из списка.',
-      back: 'Вернуться к списку класса', backHome: 'На главную',
-      ribbonYes: 'Прошёл(ла) дальше!', ribbonNo: 'Молодец!', ribbonPending: 'Результат готов',
-      reactTitleYes: 'Поддержите ребёнка своим пожеланием', reactTitleNo: 'Поддержите своего ребёнка',
-      r_pray: 'Удачи!', r_clap: 'Молодец!', r_heart: 'Гордимся', r_fire: 'Вперёд!', r_strong: 'В следующий раз!',
-      sign: 'С уважением, организаторы олимпиады «{title}»',
-      save: 'Сохранить картинку', share: 'Поделиться', copied: 'Ссылка скопирована', saved: 'Картинка сохранена', shareFail: 'Не удалось скопировать ссылку',
-      call: 'Позвонить', whatsapp: 'Написать в WhatsApp', footCall: 'Курс подготовки:',
-      days: 'дн', hours: 'ч', mins: 'мин', secs: 'сек', of: '/',
-      waText: 'Здравствуйте! Хочу узнать о курсе подготовки к районному этапу.',
-    },
-  };
-  let lang = 'kk';
-  try { const q = new URLSearchParams(location.search).get('lang'); lang = q === 'ru' || q === 'kk' ? q : (localStorage.getItem('as_lang') || 'kk'); } catch (e) { /* storage blocked */ }
-  if (lang !== 'ru') lang = 'kk';
-  const t = (k) => T[lang][k];
-  const pickL = (o) => (o && (o[lang] || o.kk || o.ru)) || '';
+  const DEFAULT_SHEET = 'https://docs.google.com/spreadsheets/d/1AvwPYSYBbdhM-VupBbwFYxiRTwXozh_qskbabr3sJs4/edit';
+  const app = document.getElementById('app');
 
   /* ================================================================ helpers */
-  const collator = (() => { try { return new Intl.Collator(['kk', 'ru'], { numeric: true, sensitivity: 'base', ignorePunctuation: true }); } catch (e) { return new Intl.Collator(undefined, { numeric: true }); } })();
-  const sortStr = (a, b) => collator.compare(a, b);
-  const norm = (s) => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[әа]/g, 'а').replace(/ғ/g, 'г').replace(/қ/g, 'к').replace(/ң/g, 'н')
-    .replace(/ө/g, 'о').replace(/[ұү]/g, 'у').replace(/һ/g, 'х').replace(/[іи]/g, 'и').replace(/[«»"'`.,№#()\-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-  const splitClass = (c) => { const m = /^(\d{1,2})(?:\s+(.+))?$/.exec(c || ''); return m ? [m[1], m[2] || ''] : null; };
-  const classLabel = (c) => { const x = splitClass(c); return x ? t('classFull')(x[0], x[1]) : c; };
-  const classChip = (c) => { const x = splitClass(c); return x ? t('classShort')(x[0], x[1]) : c; };
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === 'value') el.value = v;
+      else if (k === 'checked') el.checked = !!v;
+      else if (k === 'selected') el.selected = !!v;
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    return el;
+  }
+  let toastT = 0;
+  function toast(msg, bad) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast' + (bad ? ' bad' : ''); t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, bad ? 5000 : 2400);
+  }
+  const clean = (v, max = 300) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max);
+  const num = (v) => { if (v === null || v === undefined) return null; if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null; const s = String(v).trim().replace(/\s/g, '').replace(',', '.'); if (!s || s === '-' || s === '—') return null; const n = Number(s); return Number.isFinite(n) ? Math.round(n * 1000) / 1000 : NaN; };
+  const fmt = (n) => (n === null || n === undefined ? '' : String(Math.round(n * 1000) / 1000));
+  const int = (n) => Number(n || 0).toLocaleString('ru-RU');
+  const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[әа]/g, 'а').replace(/ғ/g, 'г').replace(/қ/g, 'к').replace(/ң/g, 'н').replace(/ө/g, 'о').replace(/[ұү]/g, 'у').replace(/һ/g, 'х').replace(/[іи]/g, 'и');
+  const collator = new Intl.Collator(['kk', 'ru'], { numeric: true, sensitivity: 'base', ignorePunctuation: true });
+  const uniq = (arr) => [...new Set(arr)].filter(Boolean).sort(collator.compare);
   const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  const roman = (n) => ROMAN[n] || String(n);
-  const fmt = (n) => (n === null || n === undefined ? '—' : (Math.round(n * 100) / 100).toLocaleString(lang === 'ru' ? 'ru-RU' : 'kk-KZ'));
-  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
-  const phoneDigits = (p) => { let d = String(p || '').replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); if (d.length === 10) d = '7' + d; return d; };
-  const phonePretty = (p) => { const d = phoneDigits(p); return d.length === 11 ? `8 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9)}` : p; };
+  const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
+
+  /* ================================================================ api */
+  let token = '';
+  try { token = localStorage.getItem('as_admin') || ''; } catch (e) { /* ignore */ }
+  const setToken = (t) => { token = t; try { localStorage.setItem('as_admin', t); } catch (e) { /* ignore */ } };
+  async function gz(text) {
+    if (typeof CompressionStream === 'undefined') return null;
+    const cs = new CompressionStream('gzip');
+    const stream = new Blob([text]).stream().pipeThrough(cs);
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  async function api(path, opts = {}) {
+    const headers = { Authorization: 'Bearer ' + token };
+    let body;
+    if (opts.body !== undefined) {
+      const text = JSON.stringify(opts.body);
+      const packed = text.length > 50000 ? await gz(text) : null;
+      if (packed) { body = packed; headers['X-Gz'] = '1'; headers['Content-Type'] = 'application/octet-stream'; }
+      else { body = text; headers['Content-Type'] = 'application/json'; }
+    }
+    let res;
+    try { res = await fetch('/api/admin/' + path, { method: opts.method || 'GET', headers, body, cache: 'no-store' }); }
+    catch (e) { throw new Error('Нет связи с сервером. Проверьте интернет.'); }
+    if (opts.raw && res.ok) return res.text();
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not json */ }
+    if (res.status === 401 && !['login', 'setup'].includes(path)) { showLogin(); throw new Error('Нужно войти'); }
+    if (!res.ok) throw new Error(data.error || 'Ошибка ' + res.status);
+    return data;
+  }
 
   /* ================================================================ state */
-  let data = null;            // /api/site
-  let tree = null;            // Map o -> Map a -> Map s -> [c]
-  const sel = { o: '', a: '', s: '', c: '' };
-  let cls = null;
-  const shards = new Map();   // индекс облыса -> Promise(shard)
+  const S = { meta: null };
+  const V = { tab: 'rows', oi: -1, shard: null, rows: [], a: '', s: '', c: '', q: '', st: 'all', sort: 'place', page: 0, per: 100, selected: new Set(), dirty: false };
 
-  /* ================================================================ data */
-  function buildTree(p) {
-    const tr = new Map(); const d = p.d || [];
-    for (const k of p.k || []) {
-      const o = p.oblys[k[0]].o, a = d[k[1]], s = d[k[2]], c = d[k[3]];
-      if (!tr.has(o)) tr.set(o, new Map());
-      const ao = tr.get(o);
-      if (!ao.has(a)) ao.set(a, new Map());
-      const so = ao.get(a);
-      if (!so.has(s)) so.set(s, []);
-      so.get(s).push(c);
-    }
-    for (const so of tr.values()) for (const ss of so.values()) for (const list of ss.values()) list.sort(sortStr);
-    return tr;
+  /* ================================================================ login / setup */
+  async function start() {
+    if (token) { try { await loadMeta(); renderShell(); return; } catch (e) { /* fallthrough */ } }
+    showLogin();
   }
-  const oblysIndex = (o) => (data && data.oblys ? data.oblys.findIndex((x) => x.o === o) : -1);
-  function statusOf(x) {
-    if (x.absent) return 'absent';
-    if (x.st === 1) return 'yes';
-    if (x.st === 2) return 'no';
-    return data.settings.emptyStatus === 'pending' ? 'pending' : 'no';
+  async function showLogin() {
+    let setup = false;
+    try { setup = (await api('status')).setup; } catch (e) { /* ignore */ }
+    const inp = h('input', { type: 'password', placeholder: setup ? 'Придумайте пароль (от 8 символов)' : 'Пароль', autocomplete: setup ? 'new-password' : 'current-password', required: true });
+    const inp2 = setup ? h('input', { type: 'password', placeholder: 'Повторите пароль', autocomplete: 'new-password', required: true }) : null;
+    const err = h('div', { class: 'err' });
+    const btn = h('button', { class: 'btn primary', type: 'submit' }, setup ? 'Создать пароль и войти' : 'Войти');
+    const form = h('form', { onsubmit: async (e) => {
+      e.preventDefault(); err.textContent = '';
+      if (setup && inp.value !== inp2.value) { err.textContent = 'Пароли не совпадают'; return; }
+      btn.disabled = true;
+      try { const d = await api(setup ? 'setup' : 'login', { method: 'POST', body: { password: inp.value } }); setToken(d.token); await loadMeta(); renderShell(); }
+      catch (er) { err.textContent = er.message; inp.select(); }
+      finally { btn.disabled = false; }
+    } }, h('h1', null, 'Кабинет «Алтын сақа»'),
+    setup ? h('p', null, 'Первый вход: придумайте пароль администратора. Запомните его — восстановить нельзя (можно только задать ADMIN_PASSWORD в настройках Netlify).') : h('p', null, 'Вход только для администратора'),
+    inp, inp2, btn, err);
+    app.replaceChildren(h('div', { class: 'login' }, form));
+    inp.focus();
   }
+  async function loadMeta() { S.meta = await api('meta'); }
+
+  /* ================================================================ shell */
+  const TABS = [['rows', 'Ученики'], ['import', 'Загрузка данных'], ['settings', 'Настройки сайта'], ['log', 'Журнал и пароль']];
+  let body;
+  function renderShell() {
+    const m = S.meta;
+    const pill = h('span', { class: 'pill ' + (m.open ? 'open' : 'closed') }, !m.dataId ? 'Нет данных' : m.open ? 'Сайт открыт' : 'Результаты скрыты');
+    const bar = h('div', { class: 'bar' },
+      h('div', { class: 'bar-in' },
+        h('h1', null, 'Кабинет «Алтын сақа»', pill),
+        h('a', { class: 'btn', href: '/', target: '_blank', rel: 'noopener' }, 'Открыть сайт'),
+        h('button', { class: 'btn', onclick: () => { setToken(''); showLogin(); } }, 'Выйти')),
+      h('div', { class: 'tabs', role: 'tablist' }, TABS.map(([k, l]) => h('button', { role: 'tab', 'aria-selected': String(V.tab === k), onclick: () => {
+        if (V.dirty && !confirm('В настройках есть несохранённые изменения. Уйти без сохранения?')) return;
+        V.dirty = false; V.tab = k; renderShell();
+      } }, l))));
+    body = h('div', { class: 'wrap' });
+    app.replaceChildren(bar, body);
+    ({ rows: renderRows, import: renderImport, settings: renderSettings, log: renderLog })[V.tab]();
+  }
+
+  /* ================================================================ rows */
   function decode(sh) {
     const d = sh.d || [];
-    const groups = new Map(); const byId = new Map();
-    for (const r of sh.r || []) {
-      const b1 = r[4], b2 = r[5], b3 = r[6];
-      let tot = r[7];
-      if (tot === null || tot === undefined) { const ps = [b1, b2, b3].filter((v) => v !== null && v !== undefined); tot = ps.length ? Math.round(ps.reduce((x, y) => x + y, 0) * 1000) / 1000 : null; }
-      const x = { a: d[r[0]], s: d[r[1]], c: d[r[2]], n: r[3], b1, b2, b3, t: tot, place: r[8] || 0, st: r[9] || 0, absent: !!r[10], teacher: r[11] >= 0 ? d[r[11]] : '', id: String(r[13]) };
-      const key = [x.a, x.s, x.c].join('\u0001');
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(x);
-      byId.set(x.id, x);
-    }
-    for (const list of groups.values()) list.sort((p, q) => (p.absent - q.absent) || ((q.t ?? -1) - (p.t ?? -1)) || sortStr(p.n, q.n));
-    return { groups, byId };
+    return (sh.r || []).map((x) => ({ a: d[x[0]], s: d[x[1]], c: d[x[2]], n: x[3], b1: x[4], b2: x[5], b3: x[6], t: x[7], place: x[8] || 0, st: x[9] || 0, absent: x[10] ? 1 : 0, teacher: x[11] >= 0 ? d[x[11]] : '', lang: x[12] >= 0 ? d[x[12]] : '', id: String(x[13]) }));
   }
-  function loadShard(i) {
-    if (i < 0 || !data.oblys[i]) return Promise.reject(new Error('no oblys'));
-    if (!shards.has(i)) {
-      const p = (async () => {
-        const res = await fetch(`/api/oblys?i=${i}&r=${data.oblys[i].rev}`);
-        if (!res.ok) throw new Error(res.status);
-        return decode(await res.json());
-      })();
-      shards.set(i, p);
-      p.catch(() => { if (shards.get(i) === p) shards.delete(i); });
-    }
-    return shards.get(i);
+  const total = (r) => (r.t !== null && r.t !== undefined ? r.t : [r.b1, r.b2, r.b3].some((x) => x !== null && x !== undefined) ? [r.b1, r.b2, r.b3].reduce((a, b) => a + (b || 0), 0) : null);
+  async function loadOblys(i) {
+    V.oi = i; V.shard = null; V.rows = []; V.selected.clear(); V.page = 0;
+    if (i < 0) return;
+    V.loading = true;
+    try { const sh = await api('oblys?i=' + i); V.rows = decode(sh); }
+    catch (e) { toast(e.message, true); }
+    V.loading = false;
   }
-  async function loadSite(first) {
-    try {
-      const res = await fetch('/api/site', first ? {} : { cache: 'no-cache' });
-      if (!res.ok) throw new Error(res.status);
-      const p = await res.json();
-      if (!first && data && p.rev === data.rev && p.open === data.open) return;
-      const changed = data && p.rev !== data.rev;
-      data = p; tree = p.open ? buildTree(p) : null;
-      if (changed) shards.clear();
-      $('error').hidden = true;
-      route();
-    } catch (e) {
-      if (first || !data) { $('loading').hidden = true; $('error').hidden = false; }
-    }
-  }
-  $('retry').addEventListener('click', () => { $('error').hidden = true; $('loading').hidden = false; loadSite(true); });
-  let hiddenAt = 0;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) hiddenAt = Date.now();
-    else if (Date.now() - hiddenAt > 60000) loadSite(false);
-  });
-
-  /* ================================================================ routing: / и /s/<облыс>/<id> */
-  function childPath() {
-    const m = location.pathname.match(/^\/s\/(\d+)\/([\w-]+)\/?$/);
-    return m ? { i: Number(m[1]), id: m[2] } : null;
-  }
-  let cameFromHome = false;
-  function go(url, replace) {
-    cameFromHome = !childPath() && /^\/s\//.test(url);
-    try { history[replace ? 'replaceState' : 'pushState'](null, '', url); } catch (e) { location.href = url; return; }
-    route(true);
-  }
-  window.addEventListener('popstate', () => route(true));
-  let homeScroll = 0;
-  function route(nav) {
-    applyStatic();
-    if (!data) return;
-    renderHeader();
-    const cp = childPath();
-    if (cp) {
-      if (!$('home').hidden) homeScroll = window.scrollY;
-      $('home').hidden = true; $('child').hidden = false;
-      renderChild(cp);
-      if (nav) window.scrollTo(0, 0);
-    } else {
-      stopFx();
-      $('child').hidden = true; $('home').hidden = false;
-      renderHome();
-      if (nav && homeScroll) requestAnimationFrame(() => window.scrollTo(0, homeScroll));
-      if (location.hash === '#finder' || location.hash === '#promo') setTimeout(() => { const n = $(location.hash.slice(1)); if (n && !n.hidden) n.scrollIntoView({ behavior: 'smooth' }); }, 50);
-    }
-  }
-  $('backLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    if (cameFromHome) history.back(); else { homeScroll = 0; go('/'); setTimeout(() => { const cv = $('classView'); if (!cv.hidden) cv.scrollIntoView({ block: 'start' }); }, 300); }
-  });
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest('a[data-home], a[data-nav]');
-    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    e.preventDefault();
-    const target = a.dataset.nav;
-    if (childPath()) { homeScroll = 0; go('/' + (target ? '#' + target : '')); }
-    if (target) { const n = $(target); if (n && !n.hidden) n.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }); }
-    else if (!childPath()) window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-  });
-
-  /* ================================================================ static texts */
-  function applyStatic() {
-    document.documentElement.lang = lang === 'ru' ? 'ru' : 'kk';
-    document.querySelectorAll('[data-t]').forEach((n) => { n.textContent = t(n.dataset.t); });
-    document.querySelectorAll('[data-t-aria]').forEach((n) => n.setAttribute('aria-label', t(n.dataset.tAria)));
-    document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
-    $('sheetSearch').placeholder = t('search');
-    $('year').textContent = new Date().getFullYear() + ' Zerdeli Group';
-  }
-  let statsDone = false;
-  function renderHeader() {
-    const s = data.settings;
-    $('title').textContent = pickL(s.title);
-    $('brandName').textContent = pickL(s.title);
-    $('footTitle').textContent = pickL(s.title);
-    $('subtitle').textContent = pickL(s.subtitle);
-    $('stage').textContent = pickL(s.stage);
-    $('heroText').textContent = data.open ? pickL(s.heroText) : '';
-    document.title = [pickL(s.title), pickL(s.stage)].filter(Boolean).join(' — ');
-    const ann = pickL(s.announcement);
-    $('announce').hidden = !ann; $('announce').textContent = ann;
-    const p = s.promo;
-    $('navPromo').hidden = !(p.show && p.phone);
-    const fp = $('footPhone');
-    if (p.show && p.phone) {
-      fp.hidden = false; fp.replaceChildren(t('footCall') + ' ');
-      const a = el('a', '', phonePretty(p.phone)); a.href = 'tel:+' + phoneDigits(p.phone); fp.append(a);
-    } else fp.hidden = true;
-    const st = $('stats');
-    st.hidden = !(s.show.stats && data.stats && data.stats.students);
-    if (!st.hidden && !statsDone) { statsDone = true; countUp($('stStudents'), data.stats.students); countUp($('stSchools'), data.stats.schools); countUp($('stOblys'), data.stats.oblys); }
-  }
-  function countUp(node, target) {
-    if (reduceMotion) { node.textContent = target.toLocaleString('ru-RU'); return; }
-    const start = performance.now(); const dur = 1600;
-    const step = (now) => { const p = Math.min(1, (now - start) / dur); node.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))).toLocaleString('ru-RU'); if (p < 1) requestAnimationFrame(step); };
-    requestAnimationFrame(step);
-  }
-
-  /* ================================================================ promo */
-  function promoNode() {
-    const p = data.settings.promo;
-    const wrap = el('section', 'promo'); wrap.id = 'promo';
-    const inn = el('div', 'promo-in');
-    if (pickL(p.badge)) inn.append(el('span', 'promo-badge', pickL(p.badge)));
-    inn.append(el('h2', '', pickL(p.title)));
-    if (pickL(p.text)) inn.append(el('p', '', pickL(p.text)));
-    const ph = el('a', 'promo-phone'); ph.href = 'tel:+' + phoneDigits(p.phone);
-    ph.innerHTML = '<i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.2 15.2 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z" fill="currentColor"/></svg></i>';
-    ph.append(phonePretty(p.phone));
-    inn.append(ph);
-    const act = el('div', 'promo-actions');
-    const call = el('a', 'btn gold', t('call')); call.href = 'tel:+' + phoneDigits(p.phone); act.append(call);
-    if (p.whatsapp) {
-      const wa = el('a', 'btn wa', t('whatsapp'));
-      wa.href = `https://wa.me/${phoneDigits(p.phone)}?text=${encodeURIComponent(t('waText'))}`; wa.target = '_blank'; wa.rel = 'noopener';
-      act.append(wa);
-    }
-    inn.append(act);
-    wrap.append(inn);
-    return wrap;
-  }
-  function renderPromoHome() {
-    const p = data.settings.promo;
-    const slot = $('promo');
-    if (!(p.show && p.phone)) { slot.hidden = true; return; }
-    const n = promoNode();
-    slot.replaceChildren(...n.childNodes); slot.hidden = false;
-  }
-
-  /* ================================================================ home */
-  let countdownTimer = 0;
-  function renderHome() {
-    $('loading').hidden = true;
-    renderPromoHome();
-    if (!data.open) {
-      $('steps').hidden = true; $('classView').hidden = true; $('closed').hidden = false;
-      $('closedText').textContent = pickL(data.settings.closedText);
-      renderCountdown();
+  let tableHost, pagerHost, bulkHost, statsHost;
+  function renderRows() {
+    const m = S.meta;
+    if (!m.dataId) {
+      body.append(h('div', { class: 'card' }, h('h2', null, 'Данных пока нет'), h('p', { class: 'sub' }, 'Загрузите результаты во вкладке «Загрузка данных» — из Google Таблицы или из Excel-файла.'),
+        h('button', { class: 'btn primary', onclick: () => { V.tab = 'import'; renderShell(); } }, 'Перейти к загрузке')));
       return;
     }
-    clearInterval(countdownTimer);
-    $('closed').hidden = true; $('steps').hidden = false;
-    if (!sel.o) { const saved = readSel(); if (saved) Object.assign(sel, saved); }
-    validateSel(); renderSteps();
-    if (sel.o) loadShard(oblysIndex(sel.o)).catch(() => {});
-    if (sel.o && sel.a && sel.s && sel.c) showClass(false); else $('classView').hidden = true;
-  }
-  function renderCountdown() {
-    clearInterval(countdownTimer);
-    const cd = $('countdown');
-    const target = data.settings.releaseAt ? Date.parse(data.settings.releaseAt) : 0;
-    if (!target || target <= Date.now()) { cd.hidden = true; return; }
-    cd.hidden = false;
-    const tick = () => {
-      let ms = target - Date.now();
-      if (ms <= 0) { clearInterval(countdownTimer); setTimeout(() => loadSite(false), 2500); ms = 0; }
-      const parts = [[Math.floor(ms / 864e5), 'days'], [Math.floor(ms / 36e5) % 24, 'hours'], [Math.floor(ms / 6e4) % 60, 'mins'], [Math.floor(ms / 1e3) % 60, 'secs']];
-      cd.replaceChildren(...parts.map(([v, k]) => { const d = el('div'); d.append(el('b', '', String(v).padStart(2, '0')), el('span', '', t(k))); return d; }));
-    };
-    tick(); countdownTimer = setInterval(tick, 1000);
-  }
-  function readSel() { try { const s = JSON.parse(localStorage.getItem('as_sel') || 'null'); return s && s.o ? s : null; } catch (e) { return null; } }
-  function saveSel() { try { localStorage.setItem('as_sel', JSON.stringify(sel)); } catch (e) { /* ignore */ } }
-  function validateSel() {
-    if (!tree) return;
-    if (sel.o && !tree.has(sel.o)) sel.o = sel.a = sel.s = sel.c = '';
-    const A = sel.o ? tree.get(sel.o) : null;
-    if (sel.a && (!A || !A.has(sel.a))) sel.a = sel.s = sel.c = '';
-    const S = sel.a ? A.get(sel.a) : null;
-    if (sel.s && (!S || !S.has(sel.s))) sel.s = sel.c = '';
-    const C = sel.s ? S.get(sel.s) : null;
-    if (sel.c && (!C || !C.includes(sel.c))) sel.c = '';
-    if (!sel.o && tree.size === 1) sel.o = [...tree.keys()][0];
-    if (sel.o && !sel.a && tree.get(sel.o).size === 1) sel.a = [...tree.get(sel.o).keys()][0];
-    if (sel.s && !sel.c) { const list = tree.get(sel.o).get(sel.a).get(sel.s); if (list.length === 1) sel.c = list[0]; }
-  }
-  function setPick(field, value, placeholder, disabled) {
-    const v = $('val-' + field);
-    v.textContent = value || placeholder; v.classList.toggle('ph', !value);
-    v.parentElement.disabled = !!disabled;
-  }
-  function renderSteps() {
-    const A = sel.o ? tree.get(sel.o) : null;
-    const S = sel.a && A ? A.get(sel.a) : null;
-    setPick('o', sel.o, t('pickO'), false);
-    setPick('a', sel.a, t('pickA'), !sel.o);
-    setPick('s', sel.s, t('pickS'), !sel.a);
-    const chips = $('chips'); chips.replaceChildren();
-    if (!sel.s) chips.append(el('span', 'hint', t('pickFirst')));
-    else {
-      const list = S.get(sel.s);
-      for (const c of list) {
-        const b = el('button', 'chip', classChip(c)); b.type = 'button';
-        b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(c === sel.c)); b.setAttribute('aria-label', classLabel(c));
-        b.tabIndex = c === sel.c || (!sel.c && c === list[0]) ? 0 : -1;
-        b.addEventListener('click', () => choose('c', c));
-        chips.append(b);
-      }
+    const total = m.oblys.reduce((a, o) => a + o.n, 0);
+    const oSel = h('select', { onchange: async (e) => { await loadOblys(Number(e.target.value)); V.a = V.s = V.c = ''; renderShell(); } },
+      h('option', { value: -1 }, `— Выберите облыс (всего ${int(total)} учеников) —`),
+      m.oblys.map((o, i) => h('option', { value: i, selected: i === V.oi }, `${o.o} — ${int(o.n)}`)));
+    const searchAll = h('button', { class: 'btn', onclick: () => globalSearch() }, 'Поиск по всем облысам');
+    body.append(h('div', { class: 'oblys-bar' }, oSel, searchAll,
+      V.oi >= 0 ? h('button', { class: 'btn primary', onclick: () => studentModal(null) }, '+ Добавить ученика') : null,
+      h('span', { class: 'spacer' }), h('button', { class: 'btn', onclick: exportExcel }, 'Скачать Excel (все данные)')));
+    if (V.oi < 0) {
+      body.append(h('div', { class: 'card' }, h('h2', null, 'Выберите облыс'), h('p', { class: 'sub' }, 'Изменения сохраняются сразу и появляются на сайте в течение ~20 секунд.')));
+      body.append(overviewCard());
+      return;
     }
-    const firstEmpty = ['o', 'a', 's', 'c'].find((k) => !sel[k]);
-    document.querySelectorAll('.step').forEach((li) => { const k = li.dataset.step; li.classList.toggle('done', !!sel[k]); li.classList.toggle('active', k === firstEmpty); });
+    statsHost = h('div', { class: 'stats' });
+    const rows = V.rows;
+    const aSel = h('select', { onchange: (e) => { V.a = e.target.value; V.s = V.c = ''; V.page = 0; renderShell(); } }, h('option', { value: '' }, 'Все аудандары'), uniq(rows.map((r) => r.a)).map((v) => h('option', { value: v, selected: v === V.a }, v)));
+    const sSel = h('select', { onchange: (e) => { V.s = e.target.value; V.page = 0; drawTable(); } }, h('option', { value: '' }, 'Все мектептер'), uniq(rows.filter((r) => !V.a || r.a === V.a).map((r) => r.s)).map((v) => h('option', { value: v, selected: v === V.s }, v.length > 60 ? v.slice(0, 60) + '…' : v)));
+    const cSel = h('select', { onchange: (e) => { V.c = e.target.value; V.page = 0; drawTable(); } }, h('option', { value: '' }, 'Все сыныптар'), uniq(rows.map((r) => r.c)).map((v) => h('option', { value: v, selected: v === V.c }, v)));
+    const stSel = h('select', { onchange: (e) => { V.st = e.target.value; V.page = 0; drawTable(); } }, [['all', 'Любой статус'], ['1', 'Өтті'], ['2', 'Өтпеді'], ['0', 'Статус пуст'], ['abs', 'Қатыспады']].map(([v, l]) => h('option', { value: v, selected: v === V.st }, l)));
+    const q = h('input', { type: 'search', placeholder: 'Поиск: ФИО, школа…', value: V.q });
+    let tmr = 0; q.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { V.q = q.value; V.page = 0; drawTable(); }, 160); });
+    const sortSel = h('select', { onchange: (e) => { V.sort = e.target.value; drawTable(); } }, [['place', 'По школе и баллу'], ['t', 'По баллу ↓'], ['n', 'По ФИО']].map(([v, l]) => h('option', { value: v, selected: v === V.sort }, l)));
+    tableHost = h('div', { class: 'tbl-wrap' }); pagerHost = h('div', { class: 'pager' }); bulkHost = h('div', { class: 'bulkhost' });
+    body.append(statsHost, h('div', { class: 'filters' }, q, aSel, sSel, cSel, stSel, sortSel), tableHost, pagerHost, bulkHost);
+    drawTable();
   }
-  function choose(field, value) {
-    const order = ['o', 'a', 's', 'c'];
-    const changed = sel[field] !== value;
-    sel[field] = value;
-    if (changed) for (const k of order.slice(order.indexOf(field) + 1)) sel[k] = '';
-    validateSel(); renderSteps(); saveSel();
-    if (sel.o) loadShard(oblysIndex(sel.o)).catch(() => {});
-    if (sel.o && sel.a && sel.s && sel.c) {
-      showClass(true);
-      setTimeout(() => { const cv = $('classView'); const r = cv.getBoundingClientRect(); if (r.top > window.innerHeight * 0.6) cv.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }); }, 80);
-    } else {
-      $('classView').hidden = true;
-      const next = order.find((k) => !sel[k]);
-      if (next && next !== 'c' && field !== 'c') setTimeout(() => openSheet(next), reduceMotion ? 0 : 160);
-      else if (next === 'c') { const ch = $('chips').querySelector('.chip'); if (ch) ch.focus({ preventScroll: true }); }
-    }
+  function overviewCard() {
+    const m = S.meta;
+    return h('div', { class: 'card' }, h('h2', null, 'По облысам'),
+      h('div', { class: 'tbl-wrap' }, h('table', { style: 'min-width:500px' },
+        h('thead', null, h('tr', null, ['Облыс', 'Учеников', 'Классов', 'Школ'].map((x) => h('th', { class: 'nosort' }, x)))),
+        h('tbody', null, m.oblys.map((o, i) => { const c = m.cls[i] || []; return h('tr', { style: 'cursor:pointer', onclick: async () => { await loadOblys(i); renderShell(); } }, h('td', null, h('b', null, o.o)), h('td', null, int(o.n)), h('td', null, int(c.length)), h('td', null, int(new Set(c.map((x) => x[0] + '|' + x[1])).size))); })))));
   }
-  let classReq = 0;
-  async function showClass() {
-    const req = ++classReq;
-    const cv = $('classView'); cv.hidden = false;
-    $('clsMsg').hidden = true; $('clsTitle').textContent = classLabel(sel.c);
-    const i = oblysIndex(sel.o);
-    const slow = setTimeout(() => { if (req !== classReq) return; const r = $('roster'); r.replaceChildren(); for (let k = 0; k < 4; k++) r.append(el('li', 'skel')); }, 120);
-    let sh;
-    try { sh = await loadShard(i); } catch (e) { clearTimeout(slow); if (req === classReq) { $('roster').replaceChildren(); $('clsMsg').hidden = false; $('clsMsgText').textContent = t('classErr'); } return; }
-    clearTimeout(slow);
-    if (req !== classReq) return;
-    const list = sh.groups.get([sel.a, sel.s, sel.c].join('\u0001')) || [];
-    cls = list;
-    const frag = document.createDocumentFragment();
-    list.forEach((x, k) => {
-      const li = el('li');
-      const b = el('button'); b.type = 'button'; // стили списка рассчитаны на кнопку
-      b.append(el('span', 'ix', String(k + 1)), el('span', 'nm', x.n || '—'));
-      const sc = el('span', 'sc');
-      if (x.absent) { sc.append(el('span', 'abs', t('absentShort'))); b.classList.add('absent'); }
-      else {
-        if (x.place >= 1 && x.place <= 3) { const pb = el('span', 'pb m' + x.place, roman(x.place)); pb.title = t('placeN')(roman(x.place)); sc.append(pb); }
-        sc.append(el('span', '', fmt(x.t)));
-        if (data.settings.show.st) sc.append(el('i', 'dot ' + (statusOf(x) === 'yes' ? 'yes' : '')));
-      }
-      const go_ = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); go_.setAttribute('viewBox', '0 0 20 20'); go_.setAttribute('class', 'go');
-      go_.innerHTML = '<path d="M8 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
-      sc.append(go_);
-      b.append(sc);
-      b.addEventListener('click', () => go(`/s/${i}/${x.id}`));
-      li.append(b); frag.append(li);
+  function filtered() {
+    const words = norm(V.q).split(/\s+/).filter(Boolean);
+    let list = V.rows.filter((r) => {
+      if (V.a && r.a !== V.a) return false;
+      if (V.s && r.s !== V.s) return false;
+      if (V.c && r.c !== V.c) return false;
+      if (V.st === 'abs' && !r.absent) return false;
+      if (['0', '1', '2'].includes(V.st) && (r.absent || String(r.st) !== V.st)) return false;
+      if (words.length) { const hay = r._h || (r._h = norm(`${r.n} ${r.s} ${r.a} ${r.c}`)); for (const w of words) if (!hay.includes(w)) return false; }
+      return true;
     });
-    $('roster').replaceChildren(frag);
+    if (V.sort === 't') list.sort((x, y) => (total(y) ?? -1) - (total(x) ?? -1));
+    else if (V.sort === 'n') list.sort((x, y) => collator.compare(x.n, y.n));
+    else list.sort((x, y) => collator.compare(x.a, y.a) || collator.compare(x.s, y.s) || collator.compare(x.c, y.c) || (x.absent - y.absent) || ((total(y) ?? -1) - (total(x) ?? -1)));
+    return list;
   }
-  $('clsRetry').addEventListener('click', () => showClass());
+  function drawStats() {
+    const rows = V.rows;
+    const yes = rows.filter((r) => r.st === 1).length;
+    const stat = (b, s) => h('div', { class: 'stat' }, h('b', null, b), h('span', null, s));
+    statsHost.replaceChildren(stat(int(rows.length), 'учеников'), stat(int(new Set(rows.map((r) => r.a)).size), 'аудандар'), stat(int(new Set(rows.map((r) => r.a + '|' + r.s)).size), 'мектептер'),
+      stat(int(yes), 'өтті'), stat(int(rows.filter((r) => r.absent).length), 'қатыспады'));
+  }
+  function drawTable() {
+    drawStats();
+    const list = filtered();
+    const pages = Math.max(1, Math.ceil(list.length / V.per));
+    if (V.page >= pages) V.page = pages - 1;
+    const pageRows = list.slice(V.page * V.per, V.page * V.per + V.per);
+    const allOn = pageRows.length > 0 && pageRows.every((r) => V.selected.has(r.id));
+    const head = h('tr', null,
+      h('th', { class: 'nosort' }, h('input', { type: 'checkbox', checked: allOn, onchange: (e) => { pageRows.forEach((r) => (e.target.checked ? V.selected.add(r.id) : V.selected.delete(r.id))); drawTable(); } })),
+      ['Аудан', 'Мектеп', 'Сынып', 'Оқушы', 'Б1', 'Б2', 'Б3', 'Жалпы', 'Орын', 'Статус', 'Қатыспады', ''].map((x) => h('th', { class: 'nosort' }, x)));
+    const tb = h('tbody');
+    if (!pageRows.length) tb.append(h('tr', { class: 'empty-row' }, h('td', { colspan: 13 }, 'Ничего не найдено')));
+    for (const r of pageRows) tb.append(rowEl(r));
+    tableHost.replaceChildren(h('table', null, h('thead', null, head), tb));
+    pagerHost.replaceChildren(
+      h('span', null, list.length ? `${V.page * V.per + 1}–${V.page * V.per + pageRows.length} из ${int(list.length)}` : '0'),
+      h('button', { class: 'btn sm', disabled: V.page === 0, onclick: () => { V.page--; drawTable(); } }, '‹ Назад'),
+      h('button', { class: 'btn sm', disabled: V.page >= pages - 1, onclick: () => { V.page++; drawTable(); } }, 'Вперёд ›'));
+    drawBulk(list);
+  }
+  function rowEl(r) {
+    const tr = h('tr', { class: V.selected.has(r.id) ? 'sel' : '' });
+    const cb = h('input', { type: 'checkbox', checked: V.selected.has(r.id), onchange: (e) => { e.target.checked ? V.selected.add(r.id) : V.selected.delete(r.id); tr.className = e.target.checked ? 'sel' : ''; drawBulk(); } });
+    const field = (k, cls, w) => {
+      const isNum = ['b1', 'b2', 'b3', 't'].includes(k);
+      const inp = h('input', { class: cls, type: 'text', inputmode: isNum || k === 'place' ? 'decimal' : 'text', value: k === 'place' ? (r.place || '') : isNum ? fmt(r[k]) : r[k], style: w ? `width:${w}px` : undefined });
+      if (k === 't' && (r.t === null || r.t === undefined)) { const a = total(r); inp.placeholder = a === null ? '' : fmt(a); inp.title = 'Пусто — сайт считает сумму баллов'; }
+      const commit = async () => {
+        let v = inp.value;
+        if (isNum) { const n = num(v); if (Number.isNaN(n)) { inp.classList.add('flash-bad'); toast('Балл должен быть числом', true); return; } if (n === r[k]) return; v = n; }
+        else if (k === 'place') { const n = parseInt(v, 10) || 0; if (n === (r.place || 0)) return; v = n; }
+        else { v = clean(v, 200); if (!v || v === r[k]) { inp.value = r[k]; return; } }
+        await save(r, { [k]: v }, inp);
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } else if (e.key === 'Escape') { inp.value = k === 'place' ? (r.place || '') : isNum ? fmt(r[k]) : r[k]; inp.blur(); } });
+      inp.addEventListener('change', commit);
+      return h('td', null, inp);
+    };
+    const st = h('select', { class: 'st ' + (r.st === 1 ? 'yes' : r.st === 2 ? 'no' : ''), onchange: async (e) => { await save(r, { st: Number(e.target.value) }, st); st.className = 'st ' + (r.st === 1 ? 'yes' : r.st === 2 ? 'no' : ''); } },
+      [['0', '—'], ['1', 'Өтті'], ['2', 'Өтпеді']].map(([v, l]) => h('option', { value: v, selected: String(r.st) === v }, l)));
+    const ab = h('input', { type: 'checkbox', checked: !!r.absent, title: 'Не участвовал', onchange: async (e) => { await save(r, { absent: e.target.checked ? 1 : 0 }, ab); } });
+    tr.append(h('td', null, cb), h('td', { class: 'txt', title: r.a }, r.a), h('td', { class: 'txt', title: r.s }, r.s), h('td', null, r.c),
+      field('n', 'nm'), field('b1', 'n'), field('b2', 'n'), field('b3', 'n'), field('t', 'n'), field('place', 'pl'), h('td', null, st), h('td', { class: 'chk-cell' }, ab),
+      h('td', null, h('div', { class: 'row', style: 'flex-wrap:nowrap;gap:6px' },
+        h('a', { class: 'btn sm', href: `/s/${V.oi}/${r.id}`, target: '_blank', rel: 'noopener', title: 'Страница ребёнка' }, '↗'),
+        h('button', { class: 'btn sm', onclick: () => studentModal(r) }, 'Изменить'),
+        h('button', { class: 'btn sm danger', onclick: async () => {
+          if (!confirm(`Удалить ученика?\n${r.n} — ${r.s}, ${r.c}`)) return;
+          try { await api('student', { method: 'DELETE', body: { i: V.oi, id: r.id } }); V.rows = V.rows.filter((x) => x !== r); V.selected.delete(r.id); bumpMeta(); drawTable(); toast('Удалено'); }
+          catch (e) { toast(e.message, true); }
+        } }, '✕'))));
+    return tr;
+  }
+  function bumpMeta() { const o = S.meta.oblys[V.oi]; if (o) o.n = V.rows.length; }
+  async function save(r, patch, elx) {
+    elx.disabled = true;
+    try {
+      const d = await api('student', { method: 'POST', body: { i: V.oi, id: r.id, row: { ...rowPayload(r), ...patch } } });
+      delete r._h; Object.assign(r, d.row);
+      elx.classList.remove('flash-bad', 'flash-ok'); void elx.offsetWidth; elx.classList.add('flash-ok');
+      if (elx.tagName === 'INPUT' && elx.type === 'text') { const k = Object.keys(patch)[0]; elx.value = k === 'place' ? (r.place || '') : ['b1', 'b2', 'b3', 't'].includes(k) ? fmt(r[k]) : r[k]; }
+      const tIn = elx.closest('tr') && elx.closest('tr').querySelectorAll('input.n')[3];
+      if (tIn && (r.t === null || r.t === undefined)) { const a = total(r); tIn.placeholder = a === null ? '' : fmt(a); }
+      drawStats();
+    } catch (e) {
+      elx.classList.add('flash-bad'); toast(e.message, true);
+      if (elx.tagName === 'SELECT') elx.value = String(r.st); else if (elx.type === 'checkbox') elx.checked = !!r.absent;
+    } finally { elx.disabled = false; }
+  }
+  const rowPayload = (r) => ({ a: r.a, s: r.s, c: r.c, n: r.n, b1: r.b1, b2: r.b2, b3: r.b3, t: r.t, place: r.place, st: r.st, absent: r.absent, teacher: r.teacher, lang: r.lang });
+  function drawBulk(list) {
+    const n = V.selected.size;
+    if (!n) { bulkHost.replaceChildren(); return; }
+    const run = async (st, label) => {
+      if (!confirm(`${label} для ${n} учеников?`)) return;
+      try {
+        await api('bulk', { method: 'POST', body: { i: V.oi, ids: [...V.selected], st } });
+        for (const r of V.rows) if (V.selected.has(r.id)) r.st = st;
+        V.selected.clear(); drawTable(); toast('Готово');
+      } catch (e) { toast(e.message, true); }
+    };
+    const fl = list || filtered();
+    bulkHost.replaceChildren(h('div', { class: 'bulk' }, h('b', null, `Выбрано: ${n}`),
+      h('button', { class: 'btn sm', onclick: () => run(1, '«Өтті»') }, 'Өтті'),
+      h('button', { class: 'btn sm', onclick: () => run(2, '«Өтпеді»') }, 'Өтпеді'),
+      h('button', { class: 'btn sm', onclick: () => run(0, 'Очистить статус') }, 'Очистить статус'),
+      fl.some((r) => !V.selected.has(r.id)) ? h('button', { class: 'btn sm', onclick: () => { fl.forEach((r) => V.selected.add(r.id)); drawTable(); } }, `Выбрать все по фильтру (${int(fl.length)})`) : null,
+      h('span', { class: 'spacer' }), h('button', { class: 'btn sm', onclick: () => { V.selected.clear(); drawTable(); } }, 'Снять выбор')));
+  }
+  function studentModal(r) {
+    const isNew = !r;
+    const v = r || { a: V.a, s: V.s, c: V.c, n: '', b1: null, b2: null, b3: null, t: null, place: 0, st: 0, absent: 0, teacher: '', lang: '' };
+    const dl = (id, vals) => h('datalist', { id }, vals.map((x) => h('option', { value: x })));
+    const f = {};
+    const field = (k, label, extra = {}) => { f[k] = h('input', { type: 'text', value: ['b1', 'b2', 'b3', 't'].includes(k) ? fmt(v[k]) : k === 'place' ? (v.place || '') : v[k], ...extra }); return h('div', { class: 'field' }, h('label', null, label), f[k]); };
+    f.st = h('select', null, [['0', '—'], ['1', 'Өтті'], ['2', 'Өтпеді']].map(([x, l]) => h('option', { value: x, selected: String(v.st) === x }, l)));
+    f.absent = h('input', { type: 'checkbox', checked: !!v.absent });
+    const err = h('div', { class: 'err' });
+    const close = () => m.remove();
+    const m = h('div', { class: 'modal', onclick: (e) => { if (e.target === m) close(); } },
+      h('form', { onsubmit: async (e) => {
+        e.preventDefault(); err.textContent = '';
+        const p = { a: f.a.value, s: f.s.value, c: f.c.value, n: f.n.value, teacher: f.teacher.value, place: parseInt(f.place.value, 10) || 0, st: Number(f.st.value), absent: f.absent.checked ? 1 : 0, lang: v.lang };
+        for (const k of ['b1', 'b2', 'b3', 't']) { const n = num(f[k].value); if (Number.isNaN(n)) { err.textContent = 'Баллы должны быть числами'; return; } p[k] = n; }
+        try {
+          const d = await api('student', { method: 'POST', body: { i: V.oi, id: isNew ? undefined : r.id, row: p } });
+          if (isNew) { V.rows.push(d.row); bumpMeta(); toast('Ученик добавлен'); } else { delete r._h; Object.assign(r, d.row); toast('Сохранено'); }
+          close(); drawTable();
+        } catch (er) { err.textContent = er.message; }
+      } },
+      h('h2', null, isNew ? `Новый ученик — ${S.meta.oblys[V.oi].o}` : 'Изменить ученика'),
+      dl('dl-a', uniq(V.rows.map((x) => x.a))), dl('dl-s', uniq(V.rows.filter((x) => !f.a || x.a === (f.a.value || v.a)).map((x) => x.s))), dl('dl-c', uniq(V.rows.map((x) => x.c))),
+      h('div', { class: 'grid2' },
+        field('a', 'Аудан', { list: 'dl-a', required: true }), field('s', 'Мектеп', { list: 'dl-s', required: true }),
+        field('c', 'Сынып и литер (например «3 А»)', { list: 'dl-c', required: true }), field('n', 'Оқушы аты-жөні', { required: true }),
+        field('b1', 'Балл 1', { inputmode: 'decimal' }), field('b2', 'Балл 2', { inputmode: 'decimal' }),
+        field('b3', 'Балл 3', { inputmode: 'decimal' }), field('t', 'Жалпы балл (пусто = сумма)', { inputmode: 'decimal' }),
+        field('place', 'Орын (1, 2, 3 или пусто)', { inputmode: 'numeric' }), h('div', { class: 'field' }, h('label', null, 'Келесі кезеңге өтті'), f.st),
+        field('teacher', 'Мұғалім'), h('div', { class: 'field' }, h('label', null, 'Участие'), h('label', { class: 'chk' }, f.absent, 'Қатыспады (не участвовал)'))),
+      err,
+      h('div', { class: 'row', style: 'justify-content:flex-end;margin-top:10px' }, h('button', { type: 'button', class: 'btn', onclick: close }, 'Отмена'), h('button', { type: 'submit', class: 'btn primary' }, isNew ? 'Добавить' : 'Сохранить'))));
+    m.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    document.body.append(m);
+    (isNew ? (f.a.value ? (f.s.value ? f.n : f.s) : f.a) : f.n).focus();
+  }
 
-  /* ================================================================ picker sheet */
-  const sheet = $('sheet'); const list = $('sheetList'); const search = $('sheetSearch');
-  let sheetField = ''; let sheetItems = []; let shown = []; let active = -1; let lastFocus = null;
-  function openSheet(field) {
-    if (!tree || (field === 'a' && !sel.o) || (field === 's' && !sel.a)) return;
-    sheetField = field;
-    const opts = field === 'o' ? [...tree.keys()] : field === 'a' ? [...tree.get(sel.o).keys()] : [...tree.get(sel.o).get(sel.a).keys()];
-    sheetItems = opts.sort(sortStr).map((v) => ({ v, n: norm(v) }));
-    $('sheetTitle').textContent = { o: t('pickO'), a: t('pickA'), s: t('pickS') }[field];
-    search.value = ''; lastFocus = document.activeElement;
-    sheet.hidden = false; document.documentElement.classList.add('lock');
-    filterSheet();
-    const cur = shown.findIndex((x) => x.v === sel[field]);
-    setActive(cur >= 0 ? cur : -1, true);
-    if (window.matchMedia('(pointer: fine)').matches || sheetItems.length > 12) search.focus({ preventScroll: true }); else list.focus({ preventScroll: true });
-  }
-  function closeSheet() {
-    if (sheet.hidden) return;
-    sheet.hidden = true; document.documentElement.classList.remove('lock');
-    if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
-  }
-  function filterSheet() {
-    const words = norm(search.value).split(' ').filter(Boolean);
-    shown = words.length ? sheetItems.filter((x) => words.every((w) => x.n.includes(w))) : sheetItems;
-    const frag = document.createDocumentFragment();
-    shown.forEach((x, i) => { const li = el('li', '', x.v); li.setAttribute('role', 'option'); li.id = 'opt-' + i; li.dataset.i = i; li.setAttribute('aria-selected', String(x.v === sel[sheetField])); frag.append(li); });
-    list.replaceChildren(frag); list.scrollTop = 0;
-    $('sheetNone').hidden = shown.length > 0;
-    active = -1; if (words.length && shown.length) setActive(0);
-  }
-  function setActive(i, center) {
-    const prev = list.querySelector('.act'); if (prev) prev.classList.remove('act');
-    active = i;
-    if (i < 0 || !list.children[i]) { search.removeAttribute('aria-activedescendant'); return; }
-    const n = list.children[i]; n.classList.add('act'); search.setAttribute('aria-activedescendant', n.id);
-    n.scrollIntoView({ block: center ? 'center' : 'nearest' });
-  }
-  list.tabIndex = -1;
-  list.addEventListener('click', (e) => { const li = e.target.closest('li'); if (!li) return; const x = shown[Number(li.dataset.i)]; if (!x) return; const f = sheetField; closeSheet(); choose(f, x.v); });
-  search.addEventListener('input', filterSheet);
-  sheet.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { e.preventDefault(); closeSheet(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(shown.length - 1, active + 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(0, active - 1)); }
-    else if (e.key === 'Enter') { e.preventDefault(); const x = shown[active >= 0 ? active : (shown.length === 1 ? 0 : -1)]; if (x) { const f = sheetField; closeSheet(); choose(f, x.v); } }
-    else if (e.key === 'Tab') {
-      const f = [...sheet.querySelectorAll('button, input')]; const i = f.indexOf(document.activeElement);
-      if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
-    }
-  });
-  sheet.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) closeSheet(); });
-  document.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => openSheet(b.dataset.field)));
-  $('chips').addEventListener('keydown', (e) => {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-    const chips = [...$('chips').querySelectorAll('.chip')]; const i = chips.indexOf(document.activeElement);
-    if (i < 0) return; e.preventDefault();
-    chips[(i + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + chips.length) % chips.length].click();
-    setTimeout(() => { const c = $('chips').querySelector('[aria-checked="true"]'); if (c) c.focus(); }, 0);
-  });
-
-  /* ================================================================ child page */
-  let current = null; let childReq = 0;
-  async function renderChild(cp) {
-    const req = ++childReq;
-    const body = $('childBody');
-    if (!data.open) { body.replaceChildren(closedCard()); return; }
-    const back = $('backLink');
-    if (!data.oblys[cp.i]) { body.replaceChildren(msgCard(t('notFound'))); back.href = '/'; return; }
-    body.replaceChildren(el('div', 'panel-loading')); body.firstChild.append(el('span', 'spinner'), el('span', '', t('loading')));
-    let sh;
-    try { sh = await loadShard(cp.i); } catch (e) { if (req === childReq) { const m = msgCard(t('loadError')); const b = el('button', 'btn', t('retry')); b.type = 'button'; b.onclick = () => renderChild(cp); m.append(b); body.replaceChildren(m); } return; }
-    if (req !== childReq) return;
-    const x = sh.byId.get(cp.id);
-    if (!x) { body.replaceChildren(msgCard(t('notFound'))); return; }
-    current = x;
-    // выбор в форме подстраиваем под ребёнка — «назад» вернёт к его классу
-    Object.assign(sel, { o: data.oblys[cp.i].o, a: x.a, s: x.s, c: x.c }); saveSel();
-    document.title = `${x.n} — ${pickL(data.settings.title)}`;
-    body.replaceChildren(...buildChild(x, cp.i));
-    animateChild(x);
-  }
-  function msgCard(text) { const c = el('div', 'absent-card'); c.append(el('p', '', text)); return c; }
-  function closedCard() { const c = el('div', 'absent-card'); c.append(el('h2', '', pickL(data.settings.closedText))); return c; }
-  const RING_C = 553;
-  function buildChild(x, oi) {
-    const s = data.settings; const kind = statusOf(x);
-    const out = [];
-    if (kind === 'absent') {
-      const c = el('div', 'absent-card'); c.append(el('h2', '', x.n), el('p', '', `${x.s}, ${classLabel(x.c)}`), el('p', '', t('absentTitle')));
-      out.push(c);
-      return out;
-    }
-    const card = el('section', 'kid ' + kind);
-    const inn = el('div', 'kid-in');
-    if (kind === 'yes') inn.append(el('div', 'rays'));
-    inn.append(el('p', 'ribbon', t(kind === 'yes' ? 'ribbonYes' : kind === 'no' ? 'ribbonNo' : 'ribbonPending')));
-    inn.append(el('h1', 'kid-name', x.n));
-    inn.append(el('p', 'kid-where', `${x.s} · ${classLabel(x.c)} · ${x.a}, ${data.oblys[oi].o}`));
-    if (s.show.teacher && x.teacher) inn.append(el('p', 'kid-teacher', `${t('teacher')}: ${x.teacher}`));
-    // кольцо
-    const hero = el('div', 'score-hero');
-    hero.innerHTML = '<svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8F11A"/><stop offset="1" stop-color="#E4FF8F"/></linearGradient><linearGradient id="rgGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9971C"/><stop offset=".5" stop-color="#F2C94C"/><stop offset="1" stop-color="#FFF1C2"/></linearGradient></defs><circle cx="100" cy="100" r="88" class="ring-bg"/><circle cx="100" cy="100" r="88" class="ring-fg"/></svg>';
-    const tot = el('div', 'total');
-    tot.append(el('span', 'total-num', '0'));
-    if (s.max.t) tot.append(el('span', 'total-max', `${t('of')} ${fmt(s.max.t)}`));
-    tot.append(el('span', 'total-label', pickL(s.labels.t)));
-    hero.append(tot); inn.append(hero);
-    // баллы
-    const parts = el('ul', 'parts');
-    for (const k of ['b1', 'b2', 'b3']) {
-      if (!s.show[k]) continue;
-      const li = el('li'); li.append(el('span', 'pl', pickL(s.labels[k])));
-      const v = el('span', 'pv', fmt(x[k]));
-      if (s.max[k]) v.append(el('small', '', `${t('of')} ${fmt(s.max[k])}`));
-      li.append(v);
-      if (s.max[k] && x[k] !== null) { const bar = el('div', 'bar'); const i = el('i'); i.dataset.w = Math.max(0, Math.min(1, x[k] / s.max[k])); bar.append(i); li.append(bar); }
-      parts.append(li);
-    }
-    if (parts.children.length) inn.append(parts);
-    if (s.show.place && x.place) {
-      const ml = el('p', 'medal-line' + (x.place <= 3 ? ' m' + x.place : ''));
-      ml.append(el('i', '', roman(x.place)), `${pickL(s.labels.place)}: ${t('placeN')(roman(x.place))}`);
-      inn.append(ml);
-    }
-    if (s.show.st) {
-      const box = el('div', 'status ' + kind);
-      box.append(el('span', 'status-icon'));
-      const d = el('div'); d.append(el('span', 'status-label', pickL(s.labels.st)), el('strong', 'status-text', pickL(s.statusText[kind])));
-      box.append(d); inn.append(box);
-    }
-    card.append(inn); out.push(card);
-    // письмо
-    const L = s.letters[kind];
-    const name = (x.n || '').split(' ').slice(-1)[0] || x.n; // обращение по имени (в таблице «Фамилия Имя»)
-    if (L && (pickL(L.title) || pickL(L.body))) {
-      const letter = el('article', 'letter ' + kind);
-      letter.append(el('span', 'seal', kind === 'yes' ? '🏆' : kind === 'no' ? '⭐' : '✉️'));
-      letter.append(el('h3', '', pickL(L.title).replace(/\{name\}/g, name)));
-      for (const para of pickL(L.body).replace(/\{name\}/g, name).split(/\n\s*\n/)) if (para.trim()) letter.append(el('p', '', para.trim()));
-      letter.append(el('p', 'sign', t('sign').replace('{title}', pickL(s.title))));
-      out.push(letter);
-    }
-    // реакции
-    if (s.reactions && x.id) out.push(reactionsNode(x, kind));
-    // действия
-    const act = el('div', 'kid-actions');
-    if (s.download) { const b = el('button', 'btn ghost'); b.type = 'button'; b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0l-4-4m4 4l4-4M4 15h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; b.append(el('span', '', t('save'))); b.addEventListener('click', () => saveImage(b)); act.append(b); }
-    const sb = el('button', 'btn ghost'); sb.type = 'button'; sb.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 11.5l5-3m-5 0l5 3M15 5.5a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0zm8 4.5a2 2 0 11-4 0 2 2 0 014 0z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'; sb.append(el('span', '', t('share'))); sb.addEventListener('click', share); act.append(sb);
-    out.push(act);
-    const p = s.promo;
-    if (p.show && p.phone && (p.onChild === 'all' || (p.onChild === 'passed' && kind === 'yes'))) { const pn = promoNode(); pn.removeAttribute('id'); out.push(pn); }
+  /* ================================================================ все облысы: поиск и Excel */
+  async function loadAllShards(onProgress) {
+    const m = S.meta; const out = new Array(m.oblys.length); let done = 0;
+    const queue = m.oblys.map((_, i) => i);
+    const worker = async () => { while (queue.length) { const i = queue.shift(); out[i] = decode(await api('oblys?i=' + i)); done++; if (onProgress) onProgress(done / m.oblys.length); } };
+    await Promise.all([worker(), worker(), worker(), worker()]);
     return out;
   }
-  function animateChild(x) {
-    const s = data.settings; const kind = statusOf(x);
-    const ring = document.querySelector('#childBody .ring-fg');
-    const num = document.querySelector('#childBody .total-num');
-    if (!ring) return;
-    const frac = s.max.t && x.t !== null ? Math.max(0, Math.min(1, x.t / s.max.t)) : (x.t !== null ? 1 : 0);
-    const bars = document.querySelectorAll('#childBody .bar i');
-    if (reduceMotion) { ring.style.strokeDashoffset = String(RING_C * (1 - frac)); num.textContent = fmt(x.t); bars.forEach((b) => { b.style.width = b.dataset.w * 100 + '%'; }); return; }
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      ring.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1)';
-      ring.style.strokeDashoffset = String(RING_C * (1 - frac));
-      bars.forEach((b) => { b.style.width = b.dataset.w * 100 + '%'; });
-    }));
-    if (x.t === null) num.textContent = '—';
-    else {
-      const start = performance.now(); const isInt = Number.isInteger(x.t);
-      const step = (now) => { if (!num.isConnected) return; const p = Math.min(1, (now - start) / 1500); const e = 1 - Math.pow(1 - p, 3); num.textContent = p < 1 ? fmt(isInt ? Math.round(x.t * e) : Math.round(x.t * e * 10) / 10) : fmt(x.t); if (p < 1) requestAnimationFrame(step); };
-      requestAnimationFrame(step);
-    }
-    if (kind === 'yes' && s.confetti) setTimeout(() => celebrate(), 700);
-    else if (kind === 'no') setTimeout(() => softStars(), 500);
+  async function globalSearch() {
+    const prog = h('div', { class: 'progress' }, h('i'));
+    const out = h('div');
+    const input = h('input', { type: 'search', placeholder: 'ФИО ученика или школа', style: 'width:100%' });
+    const close = () => m.remove();
+    const m = h('div', { class: 'modal', onclick: (e) => { if (e.target === m) close(); } }, h('form', { style: 'width:min(1000px,100%)', onsubmit: (e) => e.preventDefault() },
+      h('h2', null, 'Поиск по всем облысам'), prog, input, out, h('div', { class: 'row', style: 'justify-content:flex-end;margin-top:10px' }, h('button', { type: 'button', class: 'btn', onclick: close }, 'Закрыть'))));
+    m.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    document.body.append(m);
+    let all;
+    try { all = await loadAllShards((p) => { prog.firstChild.style.width = p * 100 + '%'; }); } catch (e) { out.replaceChildren(h('p', { class: 'err' }, e.message)); return; }
+    prog.remove(); input.focus();
+    const flat = []; all.forEach((rows, i) => rows.forEach((r) => flat.push([i, r])));
+    let tmr = 0;
+    input.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => {
+      const words = norm(input.value).split(/\s+/).filter(Boolean);
+      if (!words.length) { out.replaceChildren(); return; }
+      const found = [];
+      for (const [i, r] of flat) { const hay = r._h || (r._h = norm(`${r.n} ${r.s} ${r.a} ${r.c}`)); if (words.every((w) => hay.includes(w))) { found.push([i, r]); if (found.length >= 100) break; } }
+      out.replaceChildren(h('p', { class: 'note' }, found.length >= 100 ? 'Первые 100 — уточните запрос' : `Найдено: ${found.length}`),
+        h('div', { class: 'tbl-wrap' }, h('table', { style: 'min-width:800px' }, h('tbody', null, found.map(([i, r]) => h('tr', null,
+          h('td', null, h('b', null, r.n)), h('td', { class: 'txt' }, r.s), h('td', null, r.c), h('td', { class: 'txt' }, r.a), h('td', { class: 'txt' }, S.meta.oblys[i].o), h('td', null, fmt(total(r))),
+          h('td', null, h('div', { class: 'row', style: 'flex-wrap:nowrap;gap:6px' },
+            h('a', { class: 'btn sm', href: `/s/${i}/${r.id}`, target: '_blank', rel: 'noopener' }, '↗'),
+            h('button', { class: 'btn sm', type: 'button', onclick: async () => { close(); await loadOblys(i); V.q = r.n; V.a = V.s = V.c = ''; V.st = 'all'; renderShell(); } }, 'Открыть'))))))))); }, 150); });
   }
-
-  /* ================================================================ reactions */
-  const REACT_SETS = { yes: ['pray', 'clap', 'heart', 'fire'], no: ['strong', 'heart', 'clap', 'pray'], pending: ['clap', 'heart', 'pray'] };
-  const EMOJI = { pray: '🤲', clap: '👏', heart: '❤️', fire: '🔥', strong: '💪' };
-  function reactionsNode(x, kind) {
-    const box = el('section', 'reacts');
-    box.append(el('p', 'reacts-title', t(kind === 'yes' ? 'reactTitleYes' : 'reactTitleNo')));
-    const row = el('div', 'reacts-row'); box.append(row);
-    const mine = readMine(x.id);
-    const counts = {};
-    const btns = {};
-    for (const k of REACT_SETS[kind] || REACT_SETS.pending) {
-      const b = el('button', 'react' + (mine[k] ? ' on' : '')); b.type = 'button';
-      b.append(el('span', 'e', EMOJI[k]), el('span', '', t('r_' + k)), el('b', '', ''));
-      b.addEventListener('click', (e) => react(x.id, k, b, e));
-      btns[k] = b; row.append(b);
-    }
-    fetch('/api/react?id=' + encodeURIComponent(x.id)).then((r) => r.json()).then((d) => {
-      Object.assign(counts, d.c || {});
-      for (const k of Object.keys(btns)) { const n = (counts[k] || 0) + (mine[k] && !(counts[k] > 0) ? 1 : 0); btns[k].querySelector('b').textContent = n ? n : ''; }
-    }).catch(() => {});
-    return box;
-  }
-  function readMine(id) { try { return JSON.parse(localStorage.getItem('as_r_' + id) || '{}'); } catch (e) { return {}; } }
-  function react(id, k, btn, e) {
-    floatEmoji(EMOJI[k], e);
-    const mine = readMine(id);
-    if (mine[k]) return; // одна реакция каждого вида с устройства
-    mine[k] = 1;
-    try { localStorage.setItem('as_r_' + id, JSON.stringify(mine)); } catch (er) { /* ignore */ }
-    btn.classList.add('on');
-    const b = btn.querySelector('b'); b.textContent = String((parseInt(b.textContent, 10) || 0) + 1);
-    fetch('/api/react', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, k }) }).catch(() => {});
-  }
-  function floatEmoji(ch, e) {
-    if (reduceMotion) return;
-    const r = e.currentTarget ? e.currentTarget.getBoundingClientRect() : { left: e.clientX, top: e.clientY, width: 0 };
-    for (let i = 0; i < 6; i++) {
-      const f = el('span', 'float-e', ch);
-      f.style.left = (r.left + r.width / 2 + (Math.random() - .5) * 30) + 'px'; f.style.top = (r.top - 4) + 'px';
-      f.style.setProperty('--dx', ((Math.random() - .5) * 120) + 'px'); f.style.animationDelay = (i * 70) + 'ms';
-      document.body.append(f); setTimeout(() => f.remove(), 1700 + i * 70);
-    }
-  }
-
-  /* ================================================================ language */
-  document.querySelectorAll('.lang button').forEach((b) => b.addEventListener('click', () => {
-    if (lang === b.dataset.lang) return;
-    lang = b.dataset.lang;
-    try { localStorage.setItem('as_lang', lang); } catch (e) { /* ignore */ }
-    if (!sheet.hidden) closeSheet();
-    if (!data) { applyStatic(); return; }
-    applyStatic(); renderHeader();
-    const cp = childPath();
-    if (cp) { stopFx(); renderChild(cp); } else renderHome();
-  }));
-
-  /* ================================================================ toast, share */
-  let toastTimer = 0;
-  function toast(msg) { const n = $('toast'); n.textContent = msg; n.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { n.hidden = true; }, 2600); }
-  async function share() {
-    const url = location.href;
-    const title = current ? `${current.n} — ${pickL(data.settings.title)}` : document.title;
-    if (navigator.share && window.matchMedia('(pointer: coarse)').matches) { try { await navigator.share({ title, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-    try { await navigator.clipboard.writeText(url); toast(t('copied')); }
-    catch (e) {
-      const ta = el('textarea'); ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.append(ta); ta.select();
-      let ok = false; try { ok = document.execCommand('copy'); } catch (er) { ok = false; } ta.remove(); toast(ok ? t('copied') : t('shareFail'));
-    }
-  }
-
-  /* ================================================================ image card */
-  function wrap(ctx, text, maxW) { const words = String(text).split(' '); const lines = []; let line = ''; for (const w of words) { const tt = line ? line + ' ' + w : w; if (ctx.measureText(tt).width > maxW && line) { lines.push(line); line = w; } else line = tt; } if (line) lines.push(line); return lines; }
-  function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
-  async function drawCard() {
-    try { await document.fonts.ready; } catch (e) { /* ignore */ }
-    const s = data.settings; const x = current; const kind = statusOf(x); const gold = kind === 'yes';
-    const W = 1080;
-    const disp = (w, px) => `${w} ${px}px Unbounded, "Arial Black", sans-serif`;
-    const txt = (w, px) => `${w} ${px}px Onest, "Segoe UI", Arial, sans-serif`;
-    const clampLines = (c, text, maxW, max) => { const ls = wrap(c, text, maxW); if (ls.length <= max) return ls; const out = ls.slice(0, max); let last = out[max - 1]; while (last.length > 1 && c.measureText(last + '…').width > maxW) last = last.slice(0, -1); out[max - 1] = last.trimEnd() + '…'; return out; };
-    const accent = gold ? '#F2C94C' : '#B6A6E6';
-    function content(c) {
-      c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-      c.fillStyle = '#B6A6E6'; c.font = txt(500, 30); c.fillText(pickL(s.subtitle), W / 2, 140, W - 180);
-      c.font = disp(900, 80); c.fillStyle = gold ? '#FFE7A3' : '#FFFFFF';
-      let y = 236; clampLines(c, pickL(s.title).toUpperCase(), W - 180, 2).forEach((l) => { c.fillText(l, W / 2, y, W - 180); y += 88; });
-      const stg = pickL(s.stage);
-      if (stg) { c.font = txt(600, 28); const w = Math.min(W - 200, c.measureText(stg).width + 48); c.strokeStyle = accent; c.lineWidth = 2; rr(c, W / 2 - w / 2, y - 30, w, 52, 26); c.stroke(); c.fillStyle = accent; c.fillText(stg, W / 2, y + 5, w - 30); y += 80; }
-      const rib = t(kind === 'yes' ? 'ribbonYes' : kind === 'no' ? 'ribbonNo' : 'ribbonPending').toUpperCase();
-      c.font = disp(900, 34); const rw = Math.min(W - 160, c.measureText(rib).width + 80);
-      c.fillStyle = gold ? '#F2C94C' : 'rgba(182,166,230,.18)'; rr(c, W / 2 - rw / 2, y, rw, 70, 35); c.fill();
-      c.fillStyle = gold ? '#2A1A00' : '#FFFFFF'; c.fillText(rib, W / 2, y + 47, rw - 40); y += 130;
-      c.fillStyle = '#FFFFFF'; c.font = disp(900, 58);
-      clampLines(c, x.n, W - 180, 2).forEach((l) => { c.fillText(l, W / 2, y); y += 70; });
-      c.fillStyle = '#B6A6E6'; c.font = txt(500, 28);
-      clampLines(c, `${x.s}, ${classLabel(x.c)}`, W - 200, 3).forEach((l) => { c.fillText(l, W / 2, y); y += 38; });
-      y += 30;
-      const cx = W / 2, cy = y + 140, R = 130;
-      c.lineWidth = 14; c.strokeStyle = 'rgba(182,166,230,.16)'; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke();
-      const frac = s.max.t && x.t !== null ? Math.max(0, Math.min(1, x.t / s.max.t)) : 1;
-      c.strokeStyle = gold ? '#F2C94C' : '#B8F11A'; c.lineCap = 'round'; c.shadowColor = gold ? 'rgba(242,201,76,.6)' : 'rgba(184,241,26,.5)'; c.shadowBlur = 24;
-      c.beginPath(); c.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); c.stroke(); c.shadowBlur = 0;
-      c.fillStyle = '#FFFFFF'; c.font = disp(900, 96); c.fillText(fmt(x.t), cx, cy + 28, R * 1.6);
-      c.fillStyle = gold ? '#FFE7A3' : '#E4FF8F'; c.font = txt(600, 23); c.fillText(pickL(s.labels.t) + (s.max.t ? ` / ${fmt(s.max.t)}` : ''), cx, cy + 72, R * 1.55);
-      y = cy + R + 50;
-      const keys = ['b1', 'b2', 'b3'].filter((k) => s.show[k]);
-      if (keys.length) {
-        const gap = 20, bw = (W - 200 - gap * (keys.length - 1)) / keys.length;
-        keys.forEach((k, i) => {
-          const bx = 100 + i * (bw + gap);
-          c.fillStyle = 'rgba(13,7,36,.55)'; rr(c, bx, y, bw, 116, 24); c.fill(); c.strokeStyle = 'rgba(182,166,230,.25)'; c.lineWidth = 2; c.stroke();
-          c.fillStyle = '#B6A6E6'; c.font = txt(500, 24); c.fillText(clampLines(c, pickL(s.labels[k]), bw - 24, 1)[0], bx + bw / 2, y + 42);
-          c.fillStyle = '#FFFFFF'; c.font = disp(700, 40); c.fillText(fmt(x[k]), bx + bw / 2, y + 92, bw - 24);
-        });
-        y += 150;
-      }
-      if (s.show.place && x.place) { c.font = disp(700, 32); c.fillStyle = ['', '#F5D46B', '#DCE3F0', '#E3A36F'][x.place] || '#B6A6E6'; c.fillText(`${pickL(s.labels.place)}: ${t('placeN')(roman(x.place))}`, W / 2, y + 22, W - 200); y += 70; }
-      if (s.show.st) {
-        const label = pickL(s.statusText[kind]); c.font = disp(700, 30);
-        const w = Math.min(W - 160, c.measureText(label).width + 80);
-        c.fillStyle = gold ? '#F2C94C' : 'rgba(182,166,230,.16)'; rr(c, W / 2 - w / 2, y, w, 76, 38); c.fill();
-        c.fillStyle = gold ? '#2A1A00' : '#F5F1FF'; c.fillText(label, W / 2, y + 49, w - 50); y += 76;
-      }
-      return y;
-    }
-    const probe = document.createElement('canvas').getContext('2d');
-    const H = Math.max(1350, Math.ceil(content(probe) + 150));
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const c = cv.getContext('2d');
-    let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, gold ? '#2E1A63' : '#24135F'); g.addColorStop(1, '#0D0724'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-    g = c.createRadialGradient(W / 2, -100, 50, W / 2, -100, 900); g.addColorStop(0, gold ? 'rgba(242,201,76,.45)' : 'rgba(118,69,193,.75)'); g.addColorStop(1, 'rgba(118,69,193,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 90; i++) { c.globalAlpha = .15 + rnd() * .5; c.fillStyle = gold && i % 3 === 0 ? '#F2C94C' : '#fff'; c.beginPath(); c.arc(rnd() * W, rnd() * H, rnd() * 1.8 + .4, 0, 7); c.fill(); }
-    c.globalAlpha = 1;
-    c.strokeStyle = gold ? 'rgba(242,201,76,.7)' : 'rgba(182,166,230,.45)'; c.lineWidth = 3; rr(c, 40, 40, W - 80, H - 80, 44); c.stroke();
-    content(c);
-    c.textAlign = 'center'; c.fillStyle = 'rgba(182,166,230,.8)'; c.font = txt(500, 24); c.fillText(location.host + '  ·  Zerdeli Group', W / 2, H - 78);
-    return new Promise((r) => cv.toBlob(r, 'image/png'));
-  }
-  async function saveImage(btn) {
-    if (btn.disabled) return; btn.disabled = true;
+  async function exportExcel() {
+    if (!S.meta.dataId) return toast('Нет данных', true);
+    toast('Готовлю Excel… это займёт 10–20 секунд');
     try {
-      const blob = await drawCard(); if (!blob) throw new Error('blob');
-      const name = `${current.n}`.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.png';
-      const file = new File([blob], name, { type: 'image/png' });
-      if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-      const url = URL.createObjectURL(blob); const a = el('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000); toast(t('saved'));
-    } catch (e) { toast('Error'); } finally { btn.disabled = false; }
+      const all = await loadAllShards();
+      const head = ['Облыс', 'Аудан', 'Мектеп', 'Сынып', 'Литер', 'Оқушы аты-жөні', 'Оқу тілі', 'Мұғалім', 'Балл-1', 'Балл-2', 'Балл-3', 'Жалпы балл', 'Орын', 'Келесі кезеңге өтті', 'Қатысты', 'studentId'];
+      const aoa = [head];
+      all.forEach((rows, i) => rows.forEach((r) => {
+        const m = /^(\d{1,2})(?:\s+(.+))?$/.exec(r.c || ''); const grade = m ? Number(m[1]) : r.c; const lit = m ? m[2] || '' : '';
+        aoa.push([S.meta.oblys[i].o, r.a, r.s, grade, lit, r.n, r.lang, r.teacher, r.b1, r.b2, r.b3, total(r), r.place ? `${ROMAN[r.place] || r.place} орын` : '', r.st === 1 ? 'Иә' : r.st === 2 ? 'Жоқ' : '', r.absent ? 'Жоқ' : 'Иә', r.id]);
+      }));
+      await ensureXlsx();
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [18, 22, 40, 7, 6, 28, 10, 26, 8, 8, 8, 11, 9, 18, 9, 38].map((w) => ({ wch: w }));
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: head.length - 1 } }) };
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Нәтижелер');
+      XLSX.writeFile(wb, `Алтын сақа нәтижелер ${new Date().toISOString().slice(0, 10)}.xlsx`, { compression: true });
+      toast('Excel скачан');
+    } catch (e) { toast(e.message, true); }
+  }
+  let xlsxPromise = null;
+  function ensureXlsx() {
+    if (window.XLSX) return Promise.resolve();
+    if (!xlsxPromise) xlsxPromise = new Promise((ok, fail) => { const s = document.createElement('script'); s.src = '/xlsx.full.min.js'; s.onload = ok; s.onerror = () => { xlsxPromise = null; fail(new Error('Не удалось загрузить модуль Excel')); }; document.head.append(s); });
+    return xlsxPromise;
   }
 
-  /* ================================================================ effects */
-  const fx = $('fx'); const fctx = fx.getContext('2d'); let fxRaf = 0; let parts = [];
-  function fxSize() { const dpr = Math.min(window.devicePixelRatio || 1, 2); fx.width = innerWidth * dpr; fx.height = innerHeight * dpr; fctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
-  function stopFx() { cancelAnimationFrame(fxRaf); fxRaf = 0; parts = []; fctx.clearRect(0, 0, fx.width, fx.height); }
-  function runFx(until) {
-    fxSize();
-    let last = performance.now();
-    const loop = (now) => {
-      const dt = Math.min(40, now - last) / 16.7; last = now;
-      fctx.clearRect(0, 0, innerWidth, innerHeight);
-      parts = parts.filter((p) => p.life > 0);
-      for (const p of parts) {
-        p.vy += p.g * dt; p.vx *= Math.pow(p.drag, dt); p.vy *= Math.pow(p.drag, dt);
-        p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.r += p.vr * dt;
-        fctx.globalAlpha = Math.max(0, Math.min(1, p.life / p.fade));
-        fctx.fillStyle = p.c;
-        if (p.kind === 'rect') { fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.r); fctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 1.7))); fctx.restore(); }
-        else { fctx.beginPath(); fctx.arc(p.x, p.y, p.w, 0, 6.283); fctx.fill(); }
+  /* ================================================================ import */
+  const HEADER_RULES = [
+    ['st', /келесі|кезеңге|өтті|прош[её]л|следующ|статус|status|passed/],
+    ['t', /жалпы|барлығы|итог|общ|сумма|total|всего/],
+    ['b1', /(балл|ұпай|упай|score|тур|бал)\D*1|1\D*(балл|ұпай|тур)/],
+    ['b2', /(балл|ұпай|упай|score|тур|бал)\D*2|2\D*(балл|ұпай|тур)/],
+    ['b3', /(балл|ұпай|упай|score|тур|бал)\D*3|3\D*(балл|ұпай|тур)/],
+    ['q', /^қатысты|^қатысу|^участвовал|^присутств|^attend/],
+    ['p', /^орын$|^орны$|^место$|^place$|жүлделі орын/],
+    ['l', /литер|литера|letter|параллел/],
+    ['tch', /мұғалім|муғалім|учитель|педагог|teacher/],
+    ['lang', /оқу тілі|тіл|язык обуч|language/],
+    ['id', /studentid|student id|^id$/],
+    ['n', /аты|жөн|фио|ф\.\s*и|оқушы|окушы|ученик|участник|қатысушы|name|тегі/],
+    ['o', /облыс|област|oblys|region|өңір/],
+    ['a', /аудан|район|audan|district/],
+    ['s', /мектеп|школ|mektep|school|білім беру ұйым|организац/],
+    ['c', /сынып|класс|synyp|class|grade/],
+  ];
+  function mapHeaders(header) {
+    const map = {};
+    header.forEach((hd, i) => { const n = clean(hd).toLowerCase(); if (!n) return; for (const [f, re] of HEADER_RULES) if (map[f] === undefined && re.test(n)) { map[f] = i; return; } });
+    return map;
+  }
+  const parseStatus = (v) => { const s = clean(v).toLowerCase(); if (!s) return 0; if (/^(иә|ия|иа|да|yes|y|true|1|\+|✓|✔|өтті|отті|прош)/.test(s)) return 1; if (/^(жоқ|жок|нет|no|n|false|0|-|−|✗|өтпеді|не прош)/.test(s)) return 2; return 0; };
+  const parsePlace = (v) => { const s = clean(v).toUpperCase().replace(/[^IVX0-9]/g, ' ').trim().split(' ')[0] || ''; const r = { I: 1, II: 2, III: 3, IV: 4, V: 5 }; if (r[s]) return r[s]; const n = parseInt(s, 10); return Number.isFinite(n) && n > 0 && n < 100 ? n : 0; };
+  const absent = (v) => /^(жоқ|жок|нет|no|0|false|қатыспады|не участвовал)/i.test(clean(v));
+  function classOf(grade, lit) { const g = clean(grade, 20).replace(/\s*(сынып|класс)\s*/i, '').replace(/\.0$/, '').trim(); const l = clean(lit, 10).replace(/[«»"']/g, '').toUpperCase(); return l ? `${g} ${l}` : g; }
+  function hashId(str) { let h1 = 0x811c9dc5, h2 = 0x1234567; for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 ^ c, 2246822519); } return 'h' + (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36); }
+  // grid: массив строк (первая — заголовки) → объект импорта
+  function buildImport(grids) {
+    const result = new Map(); let skipped = 0; let total = 0; let header = null; let map = null; const warnings = [];
+    for (const grid of grids) {
+      if (!grid.length) continue;
+      let hIdx = -1;
+      for (let i = 0; i < Math.min(grid.length, 10); i++) { const mm = mapHeaders(grid[i]); if (mm.o !== undefined && mm.s !== undefined && mm.c !== undefined && mm.n !== undefined) { hIdx = i; map = mm; header = grid[i]; break; } }
+      if (hIdx < 0) throw new Error('Не нашёл строку заголовков. Нужны колонки: Облыс, Аудан, Мектеп, Сынып, Оқушы аты-жөні.');
+      const get = (row, f) => (map[f] === undefined ? '' : row[map[f]]);
+      for (let i = hIdx + 1; i < grid.length; i++) {
+        const row = grid[i];
+        const o = clean(get(row, 'o'), 200), a = clean(get(row, 'a'), 200), s = clean(get(row, 's'), 300), c = classOf(get(row, 'c'), get(row, 'l')), n = clean(get(row, 'n'), 200);
+        if (!o || !a || !s || !c || !n) { if (row.some((x) => clean(x))) skipped++; continue; }
+        total++;
+        if (!result.has(o)) result.set(o, []);
+        const ab = map.q !== undefined && absent(get(row, 'q'));
+        const sc = (f) => { const v = num(get(row, f)); return Number.isNaN(v) ? null : v; };
+        result.get(o).push({ a, s, c, n, b1: sc('b1'), b2: sc('b2'), b3: sc('b3'), t: sc('t'), place: parsePlace(get(row, 'p')), st: parseStatus(get(row, 'st')), absent: ab ? 1 : 0, teacher: clean(get(row, 'tch'), 150), lang: clean(get(row, 'lang'), 30), id: clean(get(row, 'id'), 80).replace(/[^\w-]/g, '') });
       }
-      fctx.globalAlpha = 1;
-      if (parts.length || now < until) fxRaf = requestAnimationFrame(loop); else stopFx();
+    }
+    if (!total) throw new Error('В таблице нет строк с заполненными Облыс, Аудан, Мектеп, Сынып и ФИО');
+    const names = [...result.keys()].sort(collator.compare);
+    const oblys = []; const shards = []; const cls = {};
+    let dupIds = 0;
+    names.forEach((o, i) => {
+      const rows = result.get(o); const seen = new Set();
+      for (const r of rows) {
+        let id = r.id || hashId(`${o}|${r.a}|${r.s}|${r.c}|${r.n}`);
+        if (seen.has(id)) { dupIds++; let k = 2; while (seen.has(id + '-' + k)) k++; id = id + '-' + k; }
+        seen.add(id); r.id = id;
+      }
+      shards.push(encodeShard(o, rows));
+      const mm = new Map(); for (const r of rows) { const k = r.a + '\u0001' + r.s + '\u0001' + r.c; mm.set(k, (mm.get(k) || 0) + 1); }
+      cls[i] = [...mm].map(([k, n]) => [...k.split('\u0001'), n]);
+      oblys.push({ o, n: rows.length });
+    });
+    if (dupIds) warnings.push(`Повторяющихся studentId: ${dupIds} (сделаны уникальными)`);
+    const colNames = { o: 'Облыс', a: 'Аудан', s: 'Мектеп', c: 'Сынып', l: 'Литер', n: 'Оқушы', b1: 'Балл 1', b2: 'Балл 2', b3: 'Балл 3', t: 'Жалпы балл', p: 'Орын', st: 'Келесі кезеңге өтті', q: 'Қатысты', tch: 'Мұғалім', id: 'studentId' };
+    const found = Object.keys(colNames).map((k) => [colNames[k], map[k] !== undefined ? clean(header[map[k]]) : '']);
+    let yes = 0, abs = 0, places = 0;
+    for (const rows of result.values()) for (const r of rows) { if (r.st === 1) yes++; if (r.absent) abs++; if (r.place) places++; }
+    return { oblys, shards, cls, total, skipped, found, warnings, yes, abs, places };
+  }
+  function encodeShard(o, rows) {
+    const d = []; const di = new Map();
+    const ix = (v) => { if (!v) return -1; if (!di.has(v)) { di.set(v, d.length); d.push(v); } return di.get(v); };
+    return { o, d, r: rows.map((x) => [ix(x.a), ix(x.s), ix(x.c), x.n, x.b1, x.b2, x.b3, x.t, x.place || 0, x.st || 0, x.absent ? 1 : 0, ix(x.teacher), ix(x.lang), x.id]) };
+  }
+  function parseCsv(text) {
+    text = String(text || '').replace(/^﻿/, '');
+    const rows = []; let row = []; let cell = ''; let q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"' && cell === '') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  const colLetter = (i) => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  const quote = (v) => (!v.includes("'") ? `'${v}'` : !v.includes('"') ? `"${v}"` : null);
+
+  function renderImport() {
+    const m = S.meta;
+    const out = h('div');
+    const prog = h('div', { class: 'progress', hidden: true }, h('i'));
+    const status = h('p', { class: 'note' });
+    let prepared = null;
+    const setProg = (p, text) => { prog.hidden = false; prog.firstChild.style.width = Math.round(p * 100) + '%'; if (text) status.textContent = text; };
+    const show = (imp, source) => {
+      prepared = imp;
+      out.replaceChildren(h('div', { class: 'result-box' },
+        h('b', null, `Прочитано из ${source}`),
+        h('ul', null,
+          h('li', null, `Учеников: ${int(imp.total)}, облысов: ${imp.oblys.length}` + (imp.skipped ? `, пропущено пустых строк: ${int(imp.skipped)}` : '')),
+          h('li', null, `Өтті: ${int(imp.yes)}, қатыспады: ${int(imp.abs)}, с местом (орын): ${int(imp.places)}`),
+          h('li', null, 'Колонки: ' + imp.found.map(([k, v]) => `${k}${v ? '' : ' — нет'}`).join(' · ')),
+          imp.warnings.map((w) => h('li', null, w))),
+        h('div', { class: 'row', style: 'margin-top:12px' },
+          h('button', { class: 'btn primary', onclick: (e) => upload(e.target) }, m.dataId ? 'Заменить данные на сайте' : 'Загрузить на сайт'),
+          h('span', { class: 'note' }, 'Настройки сайта и реакции сохранятся. Предыдущую версию можно будет вернуть.'))));
     };
-    cancelAnimationFrame(fxRaf); fxRaf = requestAnimationFrame(loop);
-  }
-  function burst(x, y, colors, n, power) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, v = (Math.random() * .6 + .4) * power;
-      parts.push({ kind: 'dot', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: .06, drag: .985, w: Math.random() * 2 + 1.4, r: 0, vr: 0, c: colors[i % colors.length], life: 70 + Math.random() * 30, fade: 40 });
+    async function upload(btn) {
+      if (!prepared) return;
+      if (m.dataId && !confirm(`Заменить все данные на сайте (${int(m.oblys.reduce((a, o) => a + o.n, 0))} учеников) новыми (${int(prepared.total)})?`)) return;
+      btn.disabled = true;
+      try {
+        const { dataId } = await api('import/begin', { method: 'POST', body: {} });
+        let done = 0; const queue = prepared.shards.map((sh, i) => [sh, i]);
+        const worker = async () => { while (queue.length) { const [sh, i] = queue.shift(); await api('import/shard', { method: 'POST', body: { dataId, i, shard: sh } }); done++; setProg(done / prepared.shards.length, `Загрузка: ${done} из ${prepared.shards.length} облысов…`); } };
+        await Promise.all([worker(), worker(), worker()]);
+        setProg(1, 'Сохраняю…');
+        await api('import/commit', { method: 'POST', body: { dataId, oblys: prepared.oblys, cls: prepared.cls } });
+        await loadMeta(); V.oi = -1; V.rows = []; V.tab = 'rows';
+        toast('Данные загружены — сайт обновлён');
+        status.textContent = '';
+        renderShell();
+      } catch (e) { toast(e.message, true); status.textContent = 'Ошибка: ' + e.message; btn.disabled = false; }
     }
-  }
-  function celebrate() {
-    if (reduceMotion || childPath() === null) return;
-    const gold = ['#F2C94C', '#FFE7A3', '#FFFFFF', '#C9971C'];
-    const mix = ['#F2C94C', '#FFE7A3', '#B8F11A', '#FFFFFF', '#7645C1', '#B6A6E6'];
-    const W = innerWidth, H = innerHeight;
-    for (let i = 0; i < 160; i++) {
-      const left = i % 2 === 0;
-      parts.push({ kind: 'rect', x: left ? -10 : W + 10, y: H * .7, vx: (left ? 1 : -1) * (4 + Math.random() * 9), vy: -(10 + Math.random() * 10), g: .3, drag: .992, w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: mix[i % mix.length], life: 200, fade: 60 });
-    }
-    // салют
-    const shots = [[.25, .25], [.75, .2], [.5, .15], [.18, .4], [.82, .38], [.5, .3]];
-    shots.forEach(([fx_, fy], k) => setTimeout(() => { if (childPath()) burst(W * fx_, H * fy, k % 2 ? gold : mix, 70, 7); }, 400 + k * 550));
-    runFx(performance.now() + 5200);
-  }
-  function softStars() {
-    if (reduceMotion) return;
-    const W = innerWidth, H = innerHeight; const cols = ['#B6A6E6', '#E4FF8F', '#FFFFFF', '#F2C94C'];
-    for (let i = 0; i < 60; i++) parts.push({ kind: 'dot', x: Math.random() * W, y: H + Math.random() * 60, vx: (Math.random() - .5) * .6, vy: -(1.2 + Math.random() * 2.2), g: 0, drag: 1, w: Math.random() * 2.4 + 1, r: 0, vr: 0, c: cols[i % cols.length], life: 160 + Math.random() * 120, fade: 80 });
-    runFx(performance.now() + 4000);
-  }
-  window.addEventListener('resize', () => { if (fxRaf) fxSize(); });
+    // Google Sheet
+    const url = h('input', { type: 'url', value: DEFAULT_SHEET, style: 'flex:1 1 420px' });
+    const sheet = h('input', { type: 'text', value: 'Нәтижелер', style: 'width:160px' });
+    const gBtn = h('button', { class: 'btn primary', onclick: async () => {
+      gBtn.disabled = true; out.replaceChildren(); prepared = null;
+      try {
+        setProg(0.02, 'Читаю заголовки…');
+        const head = parseCsv(await api('gsheet', { method: 'POST', raw: true, body: { url: url.value, sheet: sheet.value, tq: 'select * limit 1' } }));
+        const map = mapHeaders(head[0] || []);
+        if (map.o === undefined) throw new Error('На листе нет колонки «Облыс». Проверьте название листа.');
+        const O = colLetter(map.o);
+        const list = parseCsv(await api('gsheet', { method: 'POST', raw: true, body: { url: url.value, sheet: sheet.value, tq: `select ${O}, count(${O}) where ${O} <> '' group by ${O}` } })).slice(1).map((r) => r[0]).filter(Boolean);
+        if (!list.length) throw new Error('В таблице нет строк');
+        const grids = []; let done = 0; const queue = list.slice();
+        const worker = async () => {
+          while (queue.length) {
+            const o = queue.shift(); const q = quote(o);
+            if (!q) throw new Error('Название облыса содержит кавычки: ' + o);
+            const grid = parseCsv(await api('gsheet', { method: 'POST', raw: true, body: { url: url.value, sheet: sheet.value, tq: `select * where ${O} = ${q}` } }));
+            grids.push(grid); done++; setProg(done / list.length, `Читаю облысы: ${done} из ${list.length}…`);
+          }
+        };
+        await Promise.all([worker(), worker(), worker()]);
+        status.textContent = '';
+        show(buildImport(grids), 'Google Таблицы');
+      } catch (e) { status.textContent = ''; out.replaceChildren(h('p', { class: 'err' }, e.message)); }
+      finally { gBtn.disabled = false; prog.hidden = true; }
+    } }, 'Прочитать таблицу');
+    // Excel
+    const file = h('input', { type: 'file', accept: '.xlsx,.xls,.csv', hidden: true });
+    const drop = h('div', { class: 'drop', onclick: () => file.click() }, 'Перетащите сюда Excel-файл (.xlsx) или нажмите, чтобы выбрать');
+    const readFile = async (fl) => {
+      if (!fl) return;
+      out.replaceChildren(); prepared = null; setProg(0.1, `Читаю ${fl.name}…`);
+      try {
+        await ensureXlsx();
+        const buf = await fl.arrayBuffer();
+        setProg(0.4, 'Разбираю таблицу…');
+        await new Promise((r) => setTimeout(r, 30));
+        const wb = XLSX.read(buf, { type: 'array', dense: true, cellDates: false });
+        const name = wb.SheetNames.find((n) => /нәтиже|натиже|результ/i.test(n)) || wb.SheetNames[0];
+        const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '', blankrows: false });
+        setProg(0.8, 'Проверяю…');
+        show(buildImport([grid]), `файла «${fl.name}», лист «${name}»`);
+        status.textContent = '';
+      } catch (e) { status.textContent = ''; out.replaceChildren(h('p', { class: 'err' }, e.message)); }
+      finally { prog.hidden = true; file.value = ''; }
+    };
+    file.addEventListener('change', () => readFile(file.files[0]));
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); readFile(e.dataTransfer.files[0]); });
 
-  /* ================================================================ sky */
-  (function sky() {
-    const cv = $('sky'); const ctx = cv.getContext('2d');
-    let w, h, stars = [], raf = 0, last = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    function size() {
-      w = innerWidth; h = innerHeight; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.round(Math.min(140, (w * h) / 9000));
-      stars = Array.from({ length: n }, () => ({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.3 + .3, a: Math.random() * 6, s: Math.random() * .6 + .2, v: Math.random() * .08 + .02 }));
-      draw(0);
-    }
-    function draw(dt) {
-      ctx.clearRect(0, 0, w, h);
-      for (const st of stars) {
-        st.y -= st.v * dt * .06; if (st.y < -2) { st.y = h + 2; st.x = Math.random() * w; }
-        st.a += st.s * dt * .001;
-        ctx.globalAlpha = .25 + Math.abs(Math.sin(st.a)) * .6; ctx.fillStyle = st.r > 1.2 ? '#FFE7A3' : '#FFFFFF';
-        ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 6.283); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-    }
-    const loop = (now) => { const dt = Math.min(64, now - (last || now)); last = now; draw(dt); raf = requestAnimationFrame(loop); };
-    let rt = 0; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(size, 150); });
-    size();
-    if (reduceMotion) return;
-    raf = requestAnimationFrame(loop);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else if (!raf) { last = 0; raf = requestAnimationFrame(loop); } });
-  })();
+    body.append(
+      h('div', { class: 'card' }, h('h2', null, 'Сейчас на сайте'),
+        h('p', { class: 'sub' }, m.dataId ? `${int(m.oblys.reduce((a, o) => a + o.n, 0))} учеников, ${m.oblys.length} облысов. Обновлено: ${fmtDate(m.updatedAt)}` : 'Данных пока нет.'),
+        h('div', { class: 'row' },
+          m.dataId ? h('button', { class: 'btn', onclick: exportExcel }, 'Скачать Excel') : null,
+          m.canRollback ? h('button', { class: 'btn danger', onclick: async () => { if (!confirm('Вернуть данные, которые были до последней загрузки?')) return; try { await api('rollback', { method: 'POST', body: {} }); await loadMeta(); V.oi = -1; toast('Возвращена предыдущая версия'); renderShell(); } catch (e) { toast(e.message, true); } } }, 'Вернуть предыдущую загрузку') : null)),
+      h('div', { class: 'card' }, h('h2', null, '1. Перенести из Google Таблицы (один раз)'),
+        h('p', { class: 'sub' }, 'Сайт прочитает таблицу по облысам и сохранит у себя. После этого таблица больше не нужна — всё правится здесь. На время переноса доступ к таблице: «Все, у кого есть ссылка → Читатель».'),
+        h('div', { class: 'row' }, url, sheet, gBtn)),
+      h('div', { class: 'card' }, h('h2', null, '2. Или загрузить Excel'),
+        h('p', { class: 'sub' }, 'Google Таблица → Файл → Скачать → Microsoft Excel (.xlsx). Колонки как в вашей таблице: Облыс, Аудан, Мектеп, Сынып, Литер, Оқушы аты-жөні, Мұғалім, Балл-1/2/3, Жалпы балл, Орын, Келесі кезеңге өтті, Қатысты, studentId.'),
+        drop, file),
+      h('div', { class: 'card' }, prog, status, out));
+  }
 
-  /* ================================================================ start */
-  applyStatic();
-  loadSite(true);
+  /* ================================================================ settings */
+  function renderSettings() {
+    const s = JSON.parse(JSON.stringify(S.meta.settings));
+    const mark = () => { V.dirty = true; };
+    const bi = (obj, key, label, opts = {}) => {
+      const mk = (lng) => { const i = h(opts.area ? 'textarea' : 'input', { type: 'text', value: obj[key][lng] || '', class: opts.area ? 'textarea-ui' : undefined, style: opts.area ? `min-height:${opts.rows || 90}px` : 'width:100%' }); i.addEventListener('input', () => { obj[key][lng] = i.value; mark(); }); return i; };
+      return h('div', { class: 'grid2', style: 'margin-bottom:10px' }, h('div', { class: 'field' }, h('label', null, label + ' — қазақша'), mk('kk')), h('div', { class: 'field' }, h('label', null, label + ' — по-русски'), mk('ru')));
+    };
+    const check = (obj, key, label) => h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: obj[key], onchange: (e) => { obj[key] = e.target.checked; mark(); } }), label);
+    const maxIn = (key) => { const i = h('input', { type: 'text', inputmode: 'decimal', value: fmt(s.max[key]), placeholder: 'нет', style: 'width:90px' }); i.addEventListener('input', () => { s.max[key] = i.value.trim(); mark(); }); return h('span', { class: 'row' }, 'Максимум (для шкалы):', i); };
+    const pad = (n) => String(n).padStart(2, '0');
+    const toLocal = (iso) => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+    const when = h('input', { type: 'datetime-local', value: toLocal(s.releaseAt) });
+    when.addEventListener('input', () => { s.releaseAt = when.value ? new Date(when.value).toISOString() : ''; mark(); });
+    const modeBox = h('div', { class: 'row' }, [['open', 'Результаты открыты'], ['closed', 'Скрыты (показывать «скоро»)'], ['scheduled', 'Открыть автоматически в:']].map(([v, l]) =>
+      h('label', { class: 'chk' }, h('input', { type: 'radio', name: 'mode', value: v, checked: s.mode === v, onchange: () => { s.mode = v; when.disabled = v !== 'scheduled'; mark(); } }), l)), when);
+    when.disabled = s.mode !== 'scheduled';
+    const emptySel = h('select', { onchange: (e) => { s.emptyStatus = e.target.value; mark(); } }, h('option', { value: 'no', selected: s.emptyStatus === 'no' }, 'Пустой статус = «не прошёл»'), h('option', { value: 'pending', selected: s.emptyStatus === 'pending' }, 'Пустой статус = «результат позже»'));
+    const onChild = h('select', { onchange: (e) => { s.promo.onChild = e.target.value; mark(); } }, [['passed', 'Только у прошедших'], ['all', 'У всех'], ['none', 'Не показывать']].map(([v, l]) => h('option', { value: v, selected: s.promo.onChild === v }, l)));
+    const phone = h('input', { type: 'text', value: s.promo.phone, style: 'width:200px', inputmode: 'tel' }); phone.addEventListener('input', () => { s.promo.phone = phone.value; mark(); });
+    const saveBtn = h('button', { class: 'btn primary', onclick: async () => {
+      saveBtn.disabled = true;
+      try {
+        if (s.mode === 'scheduled' && !s.releaseAt) throw new Error('Укажите дату и время открытия');
+        const d = await api('settings', { method: 'PUT', body: { settings: s } });
+        S.meta.settings = d.settings; S.meta.open = d.open; V.dirty = false;
+        toast('Сохранено — сайт обновится в течение ~20 секунд'); renderShell();
+      } catch (e) { toast(e.message, true); } finally { saveBtn.disabled = false; }
+    } }, 'Сохранить');
+    body.append(
+      h('div', { class: 'card' }, h('h2', null, 'Публикация'), modeBox, h('div', { style: 'margin-top:12px' }, bi(s, 'closedText', 'Текст, пока результаты скрыты', { area: true, rows: 60 }))),
+      h('div', { class: 'card' }, h('h2', null, 'Главная страница'),
+        bi(s, 'title', 'Название'), bi(s, 'subtitle', 'Строка над названием'), bi(s, 'stage', 'Этап (плашка)'), bi(s, 'heroText', 'Текст под названием', { area: true, rows: 60 }),
+        bi(s, 'announcement', 'Объявление вверху (пусто — нет)', { area: true, rows: 50 }), h('div', { class: 'row' }, check(s.show, 'stats', 'Показывать счётчики (участники, школы, регионы)'))),
+      h('div', { class: 'card' }, h('h2', null, 'Реклама: подготовка к аудандық кезең'),
+        h('div', { class: 'row', style: 'margin-bottom:10px' }, check(s.promo, 'show', 'Показывать блок'), check(s.promo, 'whatsapp', 'Кнопка WhatsApp'), h('span', null, 'Телефон:'), phone, h('span', null, 'На странице ребёнка:'), onChild),
+        bi(s.promo, 'badge', 'Метка'), bi(s.promo, 'title', 'Заголовок'), bi(s.promo, 'text', 'Текст', { area: true, rows: 80 })),
+      h('div', { class: 'card' }, h('h2', null, 'Письма на странице ребёнка'),
+        h('p', { class: 'sub' }, '{name} подставит имя ребёнка. Пустая строка между абзацами — новый абзац.'),
+        h('h3', null, 'Прошёл в следующий этап'), bi(s.letters.yes, 'title', 'Заголовок'), bi(s.letters.yes, 'body', 'Письмо', { area: true, rows: 200 }),
+        h('h3', null, 'Не прошёл'), bi(s.letters.no, 'title', 'Заголовок'), bi(s.letters.no, 'body', 'Письмо', { area: true, rows: 200 }),
+        h('h3', null, 'Статус пока не известен'), bi(s.letters.pending, 'title', 'Заголовок'), bi(s.letters.pending, 'body', 'Письмо', { area: true, rows: 80 }),
+        h('div', { class: 'row' }, check(s, 'reactions', 'Реакции (🤲 👏 ❤️ 🔥 💪)'), check(s, 'confetti', 'Салют для прошедших'), check(s, 'download', 'Кнопка «Сохранить картинку»'))),
+      h('div', { class: 'card' }, h('h2', null, 'Баллы и статус'),
+        ...['b1', 'b2', 'b3'].map((k, i) => h('div', { class: 'colbox' }, h('h3', null, check(s.show, k, 'Показывать'), ` Балл ${i + 1}`), bi(s.labels, k, 'Название'), maxIn(k))),
+        h('div', { class: 'colbox' }, h('h3', null, 'Жалпы балл'), bi(s.labels, 't', 'Название'), maxIn('t')),
+        h('div', { class: 'colbox' }, h('h3', null, check(s.show, 'place', 'Показывать'), ' Орын'), bi(s.labels, 'place', 'Подпись места')),
+        h('div', { class: 'colbox' }, h('h3', null, check(s.show, 'st', 'Показывать'), ' Келесі кезең'), h('div', { class: 'row', style: 'margin-bottom:10px' }, emptySel, check(s.show, 'teacher', 'Показывать мұғалімді')),
+          bi(s.labels, 'st', 'Подпись'), bi(s.statusText, 'yes', 'Прошёл'), bi(s.statusText, 'no', 'Не прошёл'), bi(s.statusText, 'pending', 'Позже'))),
+      h('div', { class: 'savebar' }, saveBtn, h('span', { class: 'note' }, 'Изменения появятся на сайте в течение ~20 секунд.')));
+  }
+
+  /* ================================================================ log */
+  function renderLog() {
+    const listHost = h('ul', { class: 'list' }, h('li', null, 'Загрузка…'));
+    loadMeta().then(() => { listHost.replaceChildren(...((S.meta.log || []).length ? S.meta.log.map((l) => h('li', null, h('span', { class: 'when' }, fmtDate(l.at)), h('span', { class: 'what' }, l.text))) : [h('li', null, 'Пока пусто')])); }).catch((e) => toast(e.message, true));
+    const pwCur = h('input', { type: 'password', placeholder: 'Текущий пароль', autocomplete: 'current-password' });
+    const pwNew = h('input', { type: 'password', placeholder: 'Новый пароль (от 8 символов)', autocomplete: 'new-password' });
+    body.append(
+      h('div', { class: 'card' }, h('h2', null, 'Пароль администратора'), h('div', { class: 'row' }, pwCur, pwNew,
+        h('button', { class: 'btn', onclick: async () => { try { const d = await api('password', { method: 'POST', body: { current: pwCur.value, next: pwNew.value } }); setToken(d.token); pwCur.value = pwNew.value = ''; toast('Пароль изменён, другие входы завершены'); } catch (e) { toast(e.message, true); } } }, 'Сменить'))),
+      h('div', { class: 'card' }, h('h2', null, 'Журнал изменений'), listHost));
+  }
+
+  window.addEventListener('beforeunload', (e) => { if (V.dirty) { e.preventDefault(); e.returnValue = ''; } });
+  start();
 })();
