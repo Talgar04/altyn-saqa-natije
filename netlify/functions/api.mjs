@@ -118,6 +118,13 @@ export const DEFAULT_SETTINGS = {
         'Результат прохождения в следующий этап будет объявлен скоро. Спасибо за участие!'),
     },
   },
+  shareText: {
+    yes: L('🏆 {name} «Алтын сақа» олимпиадасының мектепішілік кезеңінде {score} балл жинап, аудандық кезеңге өтті! Құттықтаймыз! 🎉\n{url}',
+      '🏆 {name} набрал(а) {score} баллов на школьном этапе олимпиады «Алтын сақа» и прошёл(ла) в районный этап! Поздравляем! 🎉\n{url}'),
+    no: L('⭐ {name} «Алтын сақа» олимпиадасының мектепішілік кезеңіне қатысып, {score} балл жинады. Жарайсың, алда әлі талай жеңіс бар! 💪\n{url}',
+      '⭐ {name} участвовал(а) в школьном этапе олимпиады «Алтын сақа» и набрал(а) {score} баллов. Молодец, впереди ещё много побед! 💪\n{url}'),
+    pending: L('⭐ {name} «Алтын сақа» олимпиадасында {score} балл жинады!\n{url}', '⭐ {name} набрал(а) {score} баллов на олимпиаде «Алтын сақа»!\n{url}'),
+  },
   reactions: true,
   confetti: true,
   download: true,
@@ -126,8 +133,8 @@ export const DEFAULT_SETTINGS = {
     onChild: 'passed',          // passed | all | none — показывать рекламу на странице ребёнка
     badge: L('Дайындық курсы', 'Курс подготовки'),
     title: L('Аудандық кезеңге дайындалайық!', 'Подготовимся к районному этапу!'),
-    text: L('Балаңыз аудандық кезеңге жүйелі дайындалсын десеңіз — тәжірибелі ұстаздармен арнайы дайындық курсына жазылыңыз. Толық ақпарат пен жазылу — телефон арқылы.',
-      'Хотите, чтобы ребёнок системно подготовился к районному этапу? Запишитесь на специальный курс подготовки с опытными преподавателями. Подробности и запись — по телефону.'),
+    text: L('Балаңыз аудандық кезеңге жүйелі дайындалсын десеңіз — тәжірибелі ұстаздармен арнайы дайындық курсына жазылыңыз. Толық ақпарат пен жазылу — WhatsApp арқылы.',
+      'Хотите, чтобы ребёнок системно подготовился к районному этапу? Запишитесь на специальный курс подготовки с опытными преподавателями. Подробности и запись — в WhatsApp.'),
     phone: '87078184884',
     whatsapp: true,
   },
@@ -160,6 +167,7 @@ export function sanitizeSettings(input) {
   for (const k of ['heroText', 'announcement', 'closedText']) s[k] = bi(s[k], 600, true);
   for (const k of Object.keys(DEFAULT_SETTINGS.labels)) s.labels[k] = bi(s.labels[k], 80);
   for (const k of Object.keys(DEFAULT_SETTINGS.statusText)) s.statusText[k] = bi(s.statusText[k], 120);
+  for (const k of Object.keys(DEFAULT_SETTINGS.shareText)) s.shareText[k] = bi(s.shareText[k], 600, true);
   for (const k of Object.keys(DEFAULT_SETTINGS.letters)) s.letters[k] = { title: bi(s.letters[k].title, 160), body: bi(s.letters[k].body, 3000, true) };
   for (const k of Object.keys(DEFAULT_SETTINGS.show)) s.show[k] = !!s.show[k];
   for (const k of Object.keys(DEFAULT_SETTINGS.max)) { const n = num(s.max[k]); s.max[k] = n && n > 0 ? n : null; }
@@ -242,7 +250,8 @@ async function readBody(req) {
 const ipOf = (req) => clean(req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for') || 'x', 64).split(',')[0];
 
 /* ------------------------------------------------------------------ meta */
-const EMPTY_META = () => ({ v: 1, dataId: '', rev: 1, updatedAt: '', settings: sanitizeSettings({}), oblys: [], cls: {}, log: [] });
+const EMPTY_META = () => ({ v: 1, dataId: '', rev: 1, updatedAt: '', settings: sanitizeSettings({}), oblys: [], cls: {}, log: [], assets: {} });
+const ASSETS = ['altyn', 'app', 'favicon'];
 let memo = { at: 0, meta: null, etag: '' };
 async function loadMeta(fresh) {
   if (!fresh && memo.meta && Date.now() - memo.at < 3000) return memo;
@@ -291,7 +300,7 @@ async function site() {
   const open = isOpen(s) && !!meta.dataId;
   const key = etag + '|' + open;
   if (siteCache.key === key) return siteCache.body;
-  const body = { rev: meta.rev, open, settings: publicSettings(s), hasData: !!meta.dataId };
+  const body = { rev: meta.rev, open, settings: publicSettings(s), hasData: !!meta.dataId, assets: meta.assets || {} };
   const students = meta.oblys.reduce((a, o) => a + (o.n || 0), 0);
   let schools = 0;
   for (const list of Object.values(meta.cls || {})) schools += new Set(list.map((c) => c[0] + '|' + c[1])).size;
@@ -442,6 +451,22 @@ async function admin(req, path, method) {
       return { log: `Статус «${['пусто', 'өтті', 'өтпеді'][stv]}» для ${n} учеников` };
     }));
   }
+  if (path === 'asset' && method === 'POST') {
+    const { name, dataUrl } = await readBody(req);
+    if (!ASSETS.includes(name)) throw httpErr(400, 'Неизвестный логотип');
+    if (dataUrl === null) {
+      await st.del('asset/' + name);
+      await mutateMeta((m) => { const a = { ...(m.assets || {}) }; delete a[name]; m.assets = a; addLog(m, 'Логотип удалён: ' + name); });
+      return json({ ok: true });
+    }
+    const m = /^data:(image\/(?:png|jpeg|webp|svg\+xml|x-icon|vnd\.microsoft\.icon));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+    if (!m) throw httpErr(400, 'Нужна картинка PNG, JPG, WEBP или SVG');
+    if (m[2].length > 2_000_000) throw httpErr(413, 'Картинка больше 1,5 МБ — уменьшите её');
+    await st.set('asset/' + name, { type: m[1], data: m[2] });
+    const v = Date.now().toString(36);
+    await mutateMeta((mm) => { mm.assets = { ...(mm.assets || {}), [name]: v }; addLog(mm, 'Логотип обновлён: ' + name); });
+    return json({ ok: true, v });
+  }
   if (path === 'gsheet' && method === 'POST') {
     const { url, sheet, tq } = await readBody(req);
     return new Response(await gviz(url, sheet, tq), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -565,6 +590,13 @@ export default async (req) => {
         const c = await mutate('react/' + rid, (d) => ({ ...d, [body.k]: (d[body.k] || 0) + 1 }), {});
         return json({ c });
       }
+    }
+    if (path.startsWith('asset/') && method === 'GET') {
+      const name = path.slice(6);
+      if (!ASSETS.includes(name)) return json({ error: 'not found' }, 404);
+      const st = await store(); const got = await st.get('asset/' + name);
+      if (!got) return json({ error: 'not found' }, 404);
+      return new Response(Buffer.from(got.data.data, 'base64'), { headers: { 'Content-Type': got.data.type, 'Cache-Control': 'public, max-age=86400', 'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=31536000, immutable', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:" } });
     }
     if (path.startsWith('admin/')) return await admin(req, path.slice(6), method);
     return json({ error: 'not found' }, 404);
