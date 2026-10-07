@@ -601,6 +601,11 @@ export default async (req) => {
     if (path.startsWith('admin/')) return await admin(req, path.slice(6), method);
     return json({ error: 'not found' }, 404);
   } catch (e) {
+    if (e && e.name === 'BlobsInternalError') {
+      // ошибка самого хранилища Netlify (не пароль!) — не отдаём её код 401/403 наружу, иначе админка «выкидывает» на вход
+      console.error(e);
+      return json({ error: 'Хранилище данных Netlify не отвечает (' + (e.status || '?') + '). Данные не удалены. Проверьте Netlify → Usage и логи функции api. ' + e.message }, 503);
+    }
     const status = e.status || 500;
     if (status === 500) console.error(e);
     return json({ error: status === 500 ? 'Ошибка сервера: ' + e.message : e.message }, status);
