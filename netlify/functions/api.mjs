@@ -61,10 +61,12 @@ async function blobStore() {
   };
 }
 
-let cached;
+let cachedFs;
 async function store() {
-  if (!cached) cached = process.env.BLOBS_DIR ? fsStore(process.env.BLOBS_DIR) : await blobStore();
-  return cached;
+  if (process.env.BLOBS_DIR) return cachedFs || (cachedFs = fsStore(process.env.BLOBS_DIR));
+  // ВАЖНО: Netlify выдаёт временный ключ доступа к хранилищу на КАЖДЫЙ запрос.
+  // Нельзя запоминать store между запросами — старый ключ истекает и всё падает с 401.
+  return blobStore();
 }
 
 async function purge() {
