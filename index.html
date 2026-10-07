@@ -118,7 +118,7 @@
     <div class="closed" id="closed" hidden><p class="closed-text" id="closedText"></p><div class="countdown" id="countdown" hidden></div></div>
 
     <form class="steps" id="steps" hidden onsubmit="return false">
-      <h2 class="panel-title" data-t="finderTitle"></h2>
+      <div class="panel-head"><h2 class="panel-title" data-t="finderTitle"></h2><button type="button" class="reset-btn" id="resetTop" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 1 0 1.7-3.98M4 3.5v3.2h3.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="restart"></span></button></div>
       <ol>
         <li class="step" data-step="o"><span class="num" aria-hidden="true">1</span><div class="step-body"><span class="step-label" id="lbl-o" data-t="oblys"></span>
           <button type="button" class="pick" data-field="o" aria-haspopup="dialog" aria-labelledby="lbl-o val-o"><span class="pick-val" id="val-o"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></li>
@@ -136,6 +136,7 @@
       <p class="cls-hint" data-t="tapChild"></p>
       <ul class="roster" id="roster"></ul>
       <div class="cls-msg" id="clsMsg" hidden><p id="clsMsgText"></p><button type="button" class="btn ghost" id="clsRetry" data-t="retry"></button></div>
+      <button type="button" class="btn ghost reset-wide" id="resetBottom"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 1 0 1.7-3.98M4 3.5v3.2h3.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="restart"></span></button>
     </div>
   </section>
 
@@ -143,7 +144,7 @@
 </main>
 
 <main id="child" hidden>
-  <a class="back" href="/" id="backLink"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="back"></span></a>
+  <div class="child-nav"><a class="back" href="/" id="backLink"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="back"></span></a><a class="reset-btn" href="/" id="resetChild"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 1 0 1.7-3.98M4 3.5v3.2h3.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="restart"></span></a></div>
   <div id="childBody"></div>
 </main>
 

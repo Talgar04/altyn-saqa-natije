@@ -18,7 +18,7 @@
       placeN: (r) => `${r} орын`, teacher: 'Мұғалімі', absentShort: 'қатыспады',
       absentTitle: 'Олимпиадаға қатыспады', absentText: 'Бұл оқушы мектепішілік кезеңге қатыспаған.',
       classErr: 'Сынып тізімі жүктелмеді. Қайталап көріңіз.', notFound: 'Оқушы табылмады. Сілтемені тексеріңіз немесе тізімнен қайта таңдаңыз.',
-      back: 'Сынып тізіміне оралу', backHome: 'Басты бетке',
+      back: 'Сынып тізіміне оралу', restart: 'Басынан бастау', backHome: 'Басты бетке',
       ribbonYes: 'Келесі кезеңге өтті!', ribbonNo: 'Жарайсың!', ribbonPending: 'Жарайсың!', cardThanks: 'Қатысқаныңыз үшін рахмет!',
       reactTitleYes: 'Балаңызға тілегіңізді білдіріңіз', reactTitleNo: 'Балаңызды қолдап жіберіңіз',
       r_pray: 'Сәттілік!', r_clap: 'Жарайсың!', r_heart: 'Мақтанамыз', r_fire: 'Алға!', r_strong: 'Келесі жолы!',
@@ -42,7 +42,7 @@
       placeN: (r) => `${r} место`, teacher: 'Учитель', absentShort: 'не участв.',
       absentTitle: 'Не участвовал(а) в олимпиаде', absentText: 'Этот ученик не принимал участие в школьном этапе.',
       classErr: 'Не удалось загрузить список класса. Попробуйте ещё раз.', notFound: 'Ученик не найден. Проверьте ссылку или выберите заново из списка.',
-      back: 'Вернуться к списку класса', backHome: 'На главную',
+      back: 'Вернуться к списку класса', restart: 'Начать заново', backHome: 'На главную',
       ribbonYes: 'Прошёл(ла) дальше!', ribbonNo: 'Молодец!', ribbonPending: 'Молодец!', cardThanks: 'Спасибо за участие!',
       reactTitleYes: 'Поддержите ребёнка своим пожеланием', reactTitleNo: 'Поддержите своего ребёнка',
       r_pray: 'Удачи!', r_clap: 'Молодец!', r_heart: 'Гордимся', r_fire: 'Вперёд!', r_strong: 'В следующий раз!',
@@ -79,6 +79,7 @@
   let data = null;            // /api/site
   let tree = null;            // Map o -> Map a -> Map s -> [c]
   const sel = { o: '', a: '', s: '', c: '' };
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* ignore */ }
   let cls = null;
   const shards = new Map();   // индекс облыса -> Promise(shard)
 
@@ -310,8 +311,7 @@
     }
     clearInterval(countdownTimer);
     $('closed').hidden = true; $('steps').hidden = false;
-    if (!sel.o) { const saved = readSel(); if (saved) Object.assign(sel, saved); }
-    validateSel(); renderSteps();
+    validateSel(); renderSteps(); updateReset();
     if (sel.o) loadShard(oblysIndex(sel.o)).catch(() => {});
     if (sel.o && sel.a && sel.s && sel.c) showClass(false); else $('classView').hidden = true;
   }
@@ -329,8 +329,10 @@
     };
     tick(); countdownTimer = setInterval(tick, 1000);
   }
-  function readSel() { try { const s = JSON.parse(localStorage.getItem('as_sel') || 'null'); return s && s.o ? s : null; } catch (e) { return null; } }
-  function saveSel() { try { localStorage.setItem('as_sel', JSON.stringify(sel)); } catch (e) { /* ignore */ } }
+  // Выбор хранится только в памяти страницы: обновили сайт — всё начинается заново
+  try { localStorage.removeItem('as_sel'); } catch (e) { /* ignore */ }
+  function saveSel() { updateReset(); }
+  function updateReset() { const b = $('resetTop'); if (b) b.hidden = !(sel.a || sel.s || sel.c || (sel.o && tree && tree.size > 1)); }
   function validateSel() {
     if (!tree) return;
     if (sel.o && !tree.has(sel.o)) sel.o = sel.a = sel.s = sel.c = '';
@@ -422,6 +424,21 @@
     $('roster').replaceChildren(frag);
   }
   $('clsRetry').addEventListener('click', () => showClass());
+  /* ================================================================ сброс «Басынан бастау» */
+  function clearSel() { sel.o = sel.a = sel.s = sel.c = ''; classReq++; }
+  function resetAll() {
+    clearSel(); closeSheet();
+    $('classView').hidden = true; $('roster').replaceChildren();
+    validateSel(); renderSteps(); updateReset();
+    const f = $('finder');
+    f.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    f.classList.remove('flash'); void f.offsetWidth; f.classList.add('flash');
+    const first = document.querySelector('.step.active .pick') || document.querySelector('.pick[data-field="o"]');
+    if (first) setTimeout(() => first.focus({ preventScroll: true }), reduceMotion ? 0 : 450);
+  }
+  $('resetTop').addEventListener('click', resetAll);
+  $('resetBottom').addEventListener('click', resetAll);
+  $('resetChild').addEventListener('click', (e) => { e.preventDefault(); clearSel(); homeScroll = 0; go('/'); setTimeout(resetAll, 60); });
 
   /* ================================================================ picker sheet */
   const sheet = $('sheet'); const list = $('sheetList'); const search = $('sheetSearch');

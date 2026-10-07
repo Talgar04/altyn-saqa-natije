@@ -438,3 +438,21 @@ main { position: relative; z-index: 2; max-width: 720px; margin: 0 auto; padding
 .promo-actions .btn.wa { flex: 1 1 100%; font-size: 16px; min-height: 52px; }
 .btn.wa svg { width: 22px; height: 22px; }
 
+
+/* ---- «Басынан бастау» ---- */
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 18px; }
+.panel-head .panel-title { margin: 0; }
+.reset-btn { flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(182, 166, 230, .08); color: var(--gold-soft); font: 600 14px/1.2 var(--text); text-decoration: none; cursor: pointer; transition: background .2s, border-color .2s, transform .15s; -webkit-tap-highlight-color: transparent; }
+.reset-btn svg { width: 17px; height: 17px; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+.reset-btn:hover { background: rgba(242, 201, 76, .12); border-color: rgba(242, 201, 76, .45); }
+.reset-btn:hover svg { transform: rotate(-200deg); }
+.reset-btn:active { transform: scale(.96); }
+.reset-btn[hidden] { display: none; }
+.reset-wide { width: 100%; margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.reset-wide svg { width: 18px; height: 18px; }
+.child-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 16px; }
+.child-nav .back { margin: 0; }
+@keyframes panelFlash { 0% { box-shadow: 0 0 0 0 rgba(242, 201, 76, .55); } 100% { box-shadow: 0 0 0 18px rgba(242, 201, 76, 0); } }
+.panel.flash { animation: panelFlash .9s ease-out; }
+@media (max-width: 420px) { .reset-btn { padding: 7px 11px; font-size: 13px; } .panel-head .panel-title { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .panel.flash { animation: none; } .reset-btn svg { transition: none; } }
